@@ -1,0 +1,110 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+cryptool
+cryptool-*
+*.test
+*.out
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+*.cov
+coverage.html
+coverage.out
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+all.txt
+decrypt.txt
+test.enc
+test.decrypted.txt
+test.bin
+*.enc
+*.dec
+temp_*
+
+# Diff files
+diff/
+*.diff
+*.patch
+
+# Makefile generated files
+*.d
+
+# Build artifacts
+/dist/
+/build/
+/bin/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Project specific
+cryptool
+cryptool-linux-*
+cryptool-windows-*
+cryptool-darwin-*
+coverage.out
+coverage.html
+
+# Test files
+test.txt
+test.enc
+test.decrypted.txt
+decrypt.txt
+all.txt
+
+# Benchmark files
+benchmark-*.txt
+cpu.pprof
+mem.pprof
+block.pprof
+
+# Secret files
+*.key
+*.pem
+*.crt
+*.priv
+*.secret
+secrets/
+credentials.json
+
+# Debug files
+debug
+__debug_bin
