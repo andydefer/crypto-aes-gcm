@@ -4,7 +4,6 @@
 *.dll
 *.so
 *.dylib
-cryptool
 cryptool-*
 *.test
 *.out
@@ -76,7 +75,6 @@ diff/
 *.old
 
 # Project specific
-cryptool
 cryptool-linux-*
 cryptool-windows-*
 cryptool-darwin-*
