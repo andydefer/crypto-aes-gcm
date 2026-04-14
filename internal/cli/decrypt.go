@@ -1,40 +1,58 @@
 // Package cli provides the command-line interface for cryptool.
 //
-// It implements Cobra commands for encryption, decryption, interactive mode,
-// and version display. The package delegates business logic to the service layer
-// and UI rendering to the ui package.
+// It implements the decrypt command for decrypting files encrypted with cryptool.
+// The command handles argument parsing, validation, and delegates the actual
+// decryption work to the service layer.
 package cli
 
 import (
+	"os"
+
 	"github.com/andydefer/crypto-aes-gcm/internal/service"
 	"github.com/andydefer/crypto-aes-gcm/internal/ui"
 	"github.com/andydefer/crypto-aes-gcm/pkg/cryptolib"
 	"github.com/spf13/cobra"
 )
 
-// NewDecryptCmd creates the decrypt command.
+// NewDecryptCmd creates and configures the decrypt command.
 //
-// The command expects two arguments: input file (encrypted) and output file (plaintext).
+// The command expects two positional arguments:
+//   - input: Path to the encrypted source file
+//   - output: Path where decrypted plaintext will be written
+//
 // Flags:
-//   - --pass, -p: Passphrase (required)
-//   - --workers, -w: Number of parallel workers (default: DefaultWorkers)
-//   - --force, -f: Force overwrite existing output file
+//   - --pass, -p: Passphrase used for encryption (required)
+//   - --workers, -w: Number of parallel workers (default: cryptolib.DefaultWorkers)
+//   - --force, -f: Overwrite output file without confirmation
 //   - --quiet, -q: Suppress progress output
 //
 // Returns:
-//   - *cobra.Command: Configured Cobra command
+//   - *cobra.Command: Configured Cobra command ready for registration
 func NewDecryptCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "decrypt [input] [output]",
 		Short: "🔓 Decrypt a file",
-		Args:  cobra.ExactArgs(2),
-		Run:   runDecrypt,
+		Long: `Decrypt a file that was encrypted with the encrypt command.
+
+The decryption process:
+  1. Validates the input file exists
+  2. Reads and verifies the file header
+  3. Derives the encryption key using Argon2id with the salt from header
+  4. Streams and decrypts the data to the output file
+  5. Verifies integrity of each chunk via GCM authentication
+
+Examples:
+  cryptool decrypt secret.enc secret.txt --pass myPassword
+  cryptool decrypt data.enc output.txt --pass secure123 --force
+  cryptool decrypt large.enc result.bin --pass pass123 --workers 8 --quiet`,
+		Args: cobra.ExactArgs(2),
+		Run:  runDecrypt,
 	}
 
-	cmd.Flags().StringVarP(&pass, "pass", "p", "", "Passphrase (required)")
-	cmd.Flags().IntVarP(&workers, "workers", "w", cryptolib.DefaultWorkers, "Parallel workers")
-	cmd.Flags().BoolVarP(&force, "force", "f", false, "Force overwrite")
-	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Suppress output")
+	cmd.Flags().StringVarP(&pass, "pass", "p", "", "Passphrase used for encryption (required)")
+	cmd.Flags().IntVarP(&workers, "workers", "w", cryptolib.DefaultWorkers, "Number of parallel workers")
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Overwrite existing output file without confirmation")
+	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Suppress progress bar output")
 	_ = cmd.MarkFlagRequired("pass")
 
 	return cmd
@@ -42,8 +60,8 @@ func NewDecryptCmd() *cobra.Command {
 
 // runDecrypt executes the decryption operation.
 //
-// It validates the input file, checks for output file conflicts, and delegates
-// the actual decryption to the service layer.
+// It performs validation steps and delegates the actual work to the service layer.
+// On any error, it prints an error message and exits with code 1.
 //
 // Parameters:
 //   - cmd: The Cobra command (provides stderr output)
@@ -52,17 +70,21 @@ func runDecrypt(cmd *cobra.Command, args []string) {
 	input := args[0]
 	output := args[1]
 
+	// Validate input file exists
 	if err := service.ValidateInputFile(input); err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
-		return
+		os.Exit(1)
 	}
 
+	// Check for existing output file
 	if err := service.CheckOverwrite(output, force); err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
-		return
+		os.Exit(1)
 	}
 
+	// Execute decryption
 	if err := service.ExecuteDecryption(input, output, pass, quiet); err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
+		os.Exit(1)
 	}
 }

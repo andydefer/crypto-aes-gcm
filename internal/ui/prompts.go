@@ -23,18 +23,6 @@ import (
 )
 
 // PromptOperation displays a selection menu and returns the user's choice.
-//
-// The menu presents three options:
-//   - Encrypt a file
-//   - Decrypt a file
-//   - Exit the application
-//
-// If the user cancels (Ctrl+C or Ctrl+D), the application exits gracefully.
-//
-// Returns:
-//   - "encrypt" if the user selects encryption
-//   - "decrypt" if the user selects decryption
-//   - "exit" if the user selects exit
 func PromptOperation() string {
 	prompt := promptui.Select{
 		Label: "Que souhaitez-vous faire",
@@ -70,14 +58,7 @@ func PromptOperation() string {
 //   - Input validation to ensure the path is not empty
 //   - Optional existence check (if mustExist is true)
 //   - Default value support for common paths
-//
-// Parameters:
-//   - label: The prompt text displayed to the user
-//   - mustExist: If true, validates that the file exists on disk
-//   - defaultValue: Default path if user presses Enter without typing
-//
-// Returns:
-//   - The validated file path, or empty string if user cancels (Ctrl+C)
+//   - Automatic trimming of leading/trailing spaces
 func PromptFilePath(label string, mustExist bool, defaultValue string) string {
 	for {
 		prompt := promptui.Prompt{
@@ -98,8 +79,11 @@ func PromptFilePath(label string, mustExist bool, defaultValue string) string {
 			os.Exit(0)
 		}
 
+		// Trim spaces from the result
+		result = strings.TrimSpace(result)
+
 		if result == "" && defaultValue != "" {
-			result = defaultValue
+			result = strings.TrimSpace(defaultValue)
 		}
 
 		if result == "" {
@@ -120,19 +104,6 @@ func PromptFilePath(label string, mustExist bool, defaultValue string) string {
 }
 
 // PromptPassword asks the user for a password with masked input.
-//
-// When needValidation is true, the password must meet security requirements:
-//   - Minimum 8 characters
-//   - At least one uppercase letter (A-Z)
-//   - At least one lowercase letter (a-z)
-//   - At least one digit (0-9)
-//
-// Parameters:
-//   - label: The prompt text displayed to the user
-//   - needValidation: If true, enforces password strength requirements
-//
-// Returns:
-//   - The entered password, or empty string if user cancels (Ctrl+C)
 func PromptPassword(label string, needValidation bool) string {
 	for {
 		prompt := promptui.Prompt{
@@ -150,6 +121,9 @@ func PromptPassword(label string, needValidation bool) string {
 			fmt.Println()
 			os.Exit(0)
 		}
+
+		// Trim spaces from password as well (though unlikely)
+		result = strings.TrimSpace(result)
 
 		if needValidation {
 			if len(result) < 8 {
@@ -176,12 +150,6 @@ func PromptPassword(label string, needValidation bool) string {
 }
 
 // PromptWorkers asks the user for the number of parallel encryption workers.
-//
-// The worker count is limited to between 1 and 2×CPU cores for optimal performance.
-// The default value is cryptolib.DefaultWorkers (typically 4).
-//
-// Returns:
-//   - The selected worker count, or the default value if user cancels (Ctrl+C)
 func PromptWorkers() int {
 	maxWorkers := runtime.NumCPU() * 2
 
@@ -201,6 +169,8 @@ func PromptWorkers() int {
 			fmt.Println()
 			os.Exit(0)
 		}
+
+		result = strings.TrimSpace(result)
 
 		if result == "" {
 			SuccessColor.Printf("   ✓ %d workers\n", cryptolib.DefaultWorkers)
@@ -224,21 +194,6 @@ func PromptWorkers() int {
 }
 
 // PromptConfirm asks the user for a yes/no confirmation.
-//
-// The function accepts multiple affirmative responses:
-//   - "y", "Y", "yes", "o", "O", "oui"
-//
-// And negative responses:
-//   - "n", "N", "no", "non"
-//
-// Pressing Enter (empty input) returns the default value.
-//
-// Parameters:
-//   - label: The prompt text displayed to the user
-//   - defaultValue: Value returned when user presses Enter (true=Yes, false=No)
-//
-// Returns:
-//   - true for affirmative responses, false for negative responses
 func PromptConfirm(label string, defaultValue bool) bool {
 	defaultDisplay := "Y/n"
 	if !defaultValue {

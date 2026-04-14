@@ -415,6 +415,67 @@ test-all-short: test-scripts-short test-scenarios-short
 	@echo "✅ All short tests completed"
 
 # ---------------------------------------------------
+# Fuzzing Commands
+# ---------------------------------------------------
+
+.PHONY: fuzz
+fuzz:
+	@echo "🧪 Running fuzz tests (1 minute each)..."
+	@go test -fuzz=FuzzEncryptDecrypt -fuzztime=1m ./pkg/cryptolib/...
+	@go test -fuzz=FuzzDecryptCorrupted -fuzztime=1m ./pkg/cryptolib/...
+	@go test -fuzz=FuzzHeaderSerialization -fuzztime=1m ./pkg/cryptolib/...
+
+.PHONY: fuzz-short
+fuzz-short:
+	@echo "🧪 Running fuzz tests (10 seconds each)..."
+	@go test -fuzz=FuzzEncryptDecrypt -fuzztime=10s ./pkg/cryptolib/...
+	@go test -fuzz=FuzzDecryptCorrupted -fuzztime=10s ./pkg/cryptolib/...
+	@go test -fuzz=FuzzHeaderSerialization -fuzztime=10s ./pkg/cryptolib/...
+
+# ---------------------------------------------------
+# Benchmark Commands
+# ---------------------------------------------------
+
+.PHONY: bench
+bench:
+	@echo "📊 Running benchmarks..."
+	@go test -bench=. -benchmem ./...
+
+.PHONY: bench-cpu
+bench-cpu:
+	@echo "📊 Running benchmarks with CPU profiling..."
+	@go test -bench=. -benchmem -cpuprofile=cpu.prof ./...
+	@go tool pprof -text cpu.prof
+
+.PHONY: bench-mem
+bench-mem:
+	@echo "📊 Running benchmarks with memory profiling..."
+	@go test -bench=. -benchmem -memprofile=mem.prof ./...
+	@go tool pprof -text mem.prof
+
+# ---------------------------------------------------
+# Integration Tests (Go)
+# ---------------------------------------------------
+
+.PHONY: test-integration
+test-integration:
+	@echo "🔗 Running integration tests..."
+	@go test -tags=integration -v ./tests/...
+
+.PHONY: test-integration-short
+test-integration-short:
+	@echo "🔗 Running short integration tests..."
+	@go test -tags=integration -short -v ./tests/...
+
+# ---------------------------------------------------
+# All Tests (Unit + Fuzz + Integration)
+# ---------------------------------------------------
+
+.PHONY: test-all-go
+test-all-go: test test-integration fuzz-short bench
+	@echo "✅ All Go tests completed"
+
+# ---------------------------------------------------
 # Generate Test Files
 # ---------------------------------------------------
 
@@ -491,6 +552,22 @@ help:
 	@echo "📁 TEST FILES GENERATION"
 	@echo "  make generate-test-files       Generate test files (including 50MB+ files)"
 	@echo "  make generate-test-files-short Generate test files (short mode, no large files)"
+	@echo ""
+	@echo "🧪 FUZZING"
+	@echo "  make fuzz                      Run fuzz tests (1 minute each)"
+	@echo "  make fuzz-short                Run fuzz tests (10 seconds each)"
+	@echo ""
+	@echo "📊 BENCHMARKS"
+	@echo "  make bench                     Run all benchmarks"
+	@echo "  make bench-cpu                 Run benchmarks with CPU profiling"
+	@echo "  make bench-mem                 Run benchmarks with memory profiling"
+	@echo ""
+	@echo "🔗 INTEGRATION TESTS (Go)"
+	@echo "  make test-integration         Run integration tests"
+	@echo "  make test-integration-short   Run short integration tests"
+	@echo ""
+	@echo "🧪 ALL GO TESTS"
+	@echo "  make test-all-go              Run unit + fuzz + integration + benchmarks"
 	@echo ""
 	@echo "🧹 CLEANUP"
 	@echo "  make clean                     Remove temporary files"
