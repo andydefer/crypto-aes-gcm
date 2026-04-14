@@ -243,13 +243,12 @@ func (e *Encryptor) readChunks(reader io.Reader, jobs chan<- chunkJob) {
 // This function maintains a pending map for out-of-order chunks and limits
 // the maximum pending size to prevent memory exhaustion attacks.
 func (e *Encryptor) writeResults(results <-chan chunkResult, writer io.Writer) error {
-	const maxPending = 100
 	expectedIndex := uint64(0)
 	pending := make(map[uint64][]byte)
 
 	for result := range results {
-		if len(pending) > maxPending {
-			return fmt.Errorf("too many pending chunks (limit %d) - possible reordering attack", maxPending)
+		if len(pending) > MaxPendingChunks {
+			return fmt.Errorf("too many pending chunks (limit %d) - possible reordering attack", MaxPendingChunks)
 		}
 
 		pending[result.index] = result.ciphertext

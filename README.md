@@ -54,7 +54,7 @@ sudo mv cryptool-linux-amd64 /usr/local/bin/cryptool
 cryptool version
 ```
 
-## 🎮 Mode interactif (Nouveau !)
+## 🎮 Mode interactif
 
 Le mode interactif guide l'utilisateur étape par étape sans mémoriser les options :
 
@@ -254,10 +254,14 @@ go install ./cmd/cryptool
 
 ```go
 // Encryptor handles parallel streaming encryption
-type Encryptor struct {}
+type Encryptor struct {
+    // champs non exportés
+}
 
 // Decryptor handles streaming decryption
-type Decryptor struct {}
+type Decryptor struct {
+    // champs non exportés
+}
 
 // FileHeader represents the encrypted file header
 type FileHeader struct {
@@ -304,10 +308,10 @@ func DecryptStream(r io.Reader, w io.Writer, passphrase string) error
 
 ```go
 var (
-    ErrInvalidMagic       = errors.New("invalid magic bytes")
+    ErrInvalidMagic       = errors.New("invalid magic bytes: file not encrypted with this tool")
     ErrUnsupportedVersion = errors.New("unsupported file version")
-    ErrHeaderAuthFailed   = errors.New("header authentication failed")
-    ErrDecryptionFailed   = errors.New("decryption failed")
+    ErrHeaderAuthFailed   = errors.New("header authentication failed: wrong passphrase or corrupted file")
+    ErrDecryptionFailed   = errors.New("decryption failed: corrupted data or wrong key")
 )
 ```
 
@@ -333,6 +337,15 @@ make test                  # Tous les tests Go
 make test-short            # Tests rapides
 make test-coverage         # Tests avec couverture
 make gotestsum             # Tests avec formateur
+
+# 🧪 Fuzzing
+make fuzz                  # Fuzz tests (1 minute each)
+make fuzz-short            # Fuzz tests (10 seconds each)
+
+# 📊 Benchmarks
+make bench                 # Tous les benchmarks
+make bench-cpu             # Benchmarks avec profiling CPU
+make bench-mem             # Benchmarks avec profiling mémoire
 
 # 📋 Tests shell réalistes
 make test-scripts          # Scripts de test
@@ -364,6 +377,12 @@ make test
 # Tests avec gotestsum (formatage amélioré)
 make gotestsum
 
+# Fuzzing (détection de bugs)
+make fuzz
+
+# Benchmarks de performance
+make bench
+
 # Tests shell réalistes
 make test-scripts
 
@@ -383,6 +402,8 @@ go tool cover -html=coverage.out
 
 ## Format du fichier chiffré (v2.0.0)
 
+Le format de fichier est le suivant :
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        FILE FORMAT                          │
@@ -395,17 +416,22 @@ go tool cover -html=coverage.out
 ├─────────────────────────────────────────────────────────────┤
 │ HEADER HMAC (32 bytes) - HMAC-SHA256 du header              │
 ├─────────────────────────────────────────────────────────────┤
-│ BASE NONCE (12 bytes) - Aléatoire par fichier               │
+│ BASE NONCE (12 bytes) - Généré aléatoirement                │
 ├─────────────────────────────────────────────────────────────┤
 │ CHUNK 1                                                     │
 │  ├─ Length: 4 bytes (uint32)                                │
-│  └─ Ciphertext: variable (GCM sealed, authentifié)          │
+│  └─ Ciphertext: variable (GCM sealed + authentifié)         │
 ├─────────────────────────────────────────────────────────────┤
-│ CHUNK 2...N                                                 │
+│ CHUNK 2...N (même structure)                                │
 ├─────────────────────────────────────────────────────────────┤
 │ END MARKER (4 bytes) = 0                                    │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**Authentification :**
+- L'en-tête est protégé par **HMAC-SHA256** (vérifié avant tout déchiffrement)
+- Chaque chunk de données est authentifié par **AES-256-GCM** (AEAD)
+- La clé est dérivée du mot de passe avec **Argon2id** (time=4, memory=64MB, threads=4)
 
 ## Performance
 
@@ -427,8 +453,8 @@ Tests sur Intel i7-1165G7 @ 2.80GHz, SSD NVMe
 | **Dérivation** | Argon2id (time=4, memory=64MB, threads=4) | Résistant aux attaques GPU/ASIC |
 | **Intégrité header** | HMAC-SHA256 | Vérification avant déchiffrement |
 | **Authentification** | GCM par chunk | Chaque chunk authentifié individuellement |
-| **Nonce** | 12 bytes (base + XOR index) | Safe pour 2^64 chunks |
-| **Salt** | 16 bytes (aléatoire) | Unique par fichier |
+| **Nonce** | 12 bytes (base + XOR avec index) | Safe pour 2^64 chunks |
+| **Salt** | 16 bytes (crypto/rand) | Unique par fichier |
 | **Chunk size** | 1 MB | Bon compromis mémoire/performance |
 
 ## Contribution

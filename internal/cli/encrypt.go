@@ -6,11 +6,13 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/andydefer/crypto-aes-gcm/internal/service"
 	"github.com/andydefer/crypto-aes-gcm/internal/ui"
 	"github.com/andydefer/crypto-aes-gcm/pkg/cryptolib"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 )
 
@@ -79,8 +81,20 @@ func runEncrypt(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	// Check for existing output file
-	if err := service.CheckOverwrite(output, force); err != nil {
+	// Check for existing output file with interactive confirmation
+	err := service.CheckOverwrite(output, force)
+	if err == service.ErrFileExists && !force {
+		prompt := promptui.Prompt{
+			Label:     fmt.Sprintf("Fichier '%s' existe déjà. Écraser ?", output),
+			IsConfirm: true,
+			Default:   "n",
+		}
+		result, errPrompt := prompt.Run()
+		if errPrompt != nil || (result != "y" && result != "Y") {
+			ui.InfoColor.Println("❌ Opération annulée")
+			os.Exit(0)
+		}
+	} else if err != nil && err != service.ErrFileExists {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
 		os.Exit(1)
 	}

@@ -14,8 +14,10 @@ import (
 
 	"github.com/andydefer/crypto-aes-gcm/internal/ui"
 	"github.com/andydefer/crypto-aes-gcm/pkg/cryptolib"
-	"github.com/manifoldco/promptui"
 )
+
+// ErrFileExists indicates that the output file already exists and force is false.
+var ErrFileExists = fmt.Errorf("fichier existe déjà")
 
 // ValidateWorkerCount ensures the worker count is within reasonable bounds.
 //
@@ -81,32 +83,22 @@ func CheckFileExists(path string) (bool, error) {
 	return true, nil
 }
 
-// CheckOverwrite prompts for confirmation when output file exists (non-interactive mode).
-//
-// This function is used by the CLI commands (non-interactive mode) to ask for
-// confirmation before overwriting an existing output file. If force is true,
-// the confirmation is skipped.
+// CheckOverwrite checks if output file exists and returns ErrFileExists if it does
+// and force is false. This function is non-interactive and returns an error that
+// the caller (CLI layer) can handle appropriately.
 //
 // Parameters:
 //   - output: Path to the output file that may already exist
-//   - force: If true, overwrites without confirmation
+//   - force: If true, overwrites without checking
 //
 // Returns:
-//   - error: nil if overwrite is allowed, or an error if cancelled by user
+//   - error: nil if overwrite is allowed, ErrFileExists if file exists and force is false
 func CheckOverwrite(output string, force bool) error {
 	if force {
 		return nil
 	}
 	if _, err := os.Stat(output); err == nil {
-		prompt := promptui.Prompt{
-			Label:     fmt.Sprintf("Fichier '%s' existe. Écraser ?", output),
-			IsConfirm: true,
-			Default:   "n",
-		}
-		result, err := prompt.Run()
-		if err != nil || (result != "y" && result != "Y") {
-			return fmt.Errorf("annulé")
-		}
+		return ErrFileExists
 	}
 	return nil
 }

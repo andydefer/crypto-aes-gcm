@@ -8,6 +8,7 @@
 package service
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -53,12 +54,17 @@ func ExecuteEncryption(input, output, password string, workerCount int, quiet bo
 		return err
 	}
 
+	inputFile, err := openFile(input)
+	if err != nil {
+		return err
+	}
+	defer inputFile.Close()
+
 	reader := &progressReader{
-		r:     mustOpenFile(input),
+		r:     inputFile,
 		bar:   bar,
 		total: fileSize,
 	}
-	defer reader.Close()
 
 	outFile, err := os.Create(output)
 	if err != nil {
@@ -124,24 +130,18 @@ func (n *noopProgressBar) Finish() error { return nil }
 // Clear implements ProgressBar.Clear but does nothing.
 func (n *noopProgressBar) Clear() error { return nil }
 
-// mustOpenFile opens a file and exits the program on failure.
-//
-// This helper is used for interactive mode where a failure to open the
-// source file should abort the operation entirely.
+// openFile opens a file and returns an error on failure.
 //
 // Parameters:
 //   - path: Path to the file to open
 //
 // Returns:
 //   - io.ReadCloser: Opened file handle (caller must close)
-//
-// Note: This function calls os.Exit(1) on error and is intended for
-// interactive CLI use only, not for library usage.
-func mustOpenFile(path string) io.ReadCloser {
+//   - error: Any error encountered during opening
+func openFile(path string) (io.ReadCloser, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		ui.ErrorColor.Fprintf(os.Stderr, "❌ Erreur: %v\n", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("ouverture du fichier '%s': %w", path, err)
 	}
-	return f
+	return f, nil
 }
