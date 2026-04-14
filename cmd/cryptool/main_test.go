@@ -1,19 +1,18 @@
+// Package main provides the entry point tests for cryptool CLI.
 package main
 
 import (
 	"testing"
 )
 
-// TestMainFunction verifies that main doesn't panic
-// This is a smoke test for the entry point
+// TestMainFunction ensures the package compiles without errors.
+//
+// This test does not execute main() because it would terminate the test process.
+// It serves as a compile-time verification and smoke test for the entry point.
 func TestMainFunction(t *testing.T) {
-	// Test that main doesn't panic when called with --help
 	defer func() {
 		if r := recover(); r != nil {
 			t.Errorf("main panicked: %v", r)
 		}
 	}()
-
-	// Note: We don't actually call main() here because it would exit the test
-	// This test just ensures the package compiles
 }

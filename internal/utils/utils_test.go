@@ -1,9 +1,31 @@
+// Package utils provides utility functions for cryptool.
+//
+// This package contains helper functions that are used across multiple
+// packages in the application, including:
+//   - Human-readable file size formatting
+//   - Common validation logic
+//   - String manipulation utilities
+//
+// All functions in this package are pure and have no side effects,
+// making them safe for concurrent use.
 package utils
 
 import (
 	"testing"
 )
 
+// TestFormatFileSize verifies that byte counts are correctly formatted into
+// human-readable strings with appropriate units (B, KB, MB, GB).
+//
+// This test covers:
+//   - Byte-level precision (0-1023 bytes)
+//   - Kilobyte conversion (1024 bytes and above)
+//   - Megabyte conversion (1,048,576 bytes and above)
+//   - Gigabyte conversion (1,073,741,824 bytes and above)
+//   - Edge cases (zero bytes, single byte, boundary values)
+//
+// The test uses table-driven testing to ensure consistent formatting
+// across all size ranges.
 func TestFormatFileSize(t *testing.T) {
 	tests := []struct {
 		name     string

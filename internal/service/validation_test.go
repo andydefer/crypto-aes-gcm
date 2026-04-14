@@ -1,3 +1,10 @@
+// Package service provides business logic for encryption and decryption operations.
+//
+// This package orchestrates the encryption and decryption processes by:
+//   - Managing progress bars and user feedback
+//   - Handling file I/O operations
+//   - Coordinating with the cryptolib package for core crypto operations
+//   - Providing error handling and cleanup
 package service
 
 import (
@@ -6,8 +13,9 @@ import (
 	"testing"
 )
 
+// TestCheckOverwriteWithForce verifies that CheckOverwrite bypasses confirmation
+// when the force flag is enabled, even when the output file already exists.
 func TestCheckOverwriteWithForce(t *testing.T) {
-	// Test with force=true should never ask for confirmation
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "test.txt")
 
@@ -15,28 +23,29 @@ func TestCheckOverwriteWithForce(t *testing.T) {
 		t.Fatalf("failed to create file: %v", err)
 	}
 
-	// With force=true, should not error even if file exists
 	err := CheckOverwrite(testFile, true)
 	if err != nil {
 		t.Errorf("CheckOverwrite with force=true should not error: %v", err)
 	}
 }
 
+// TestCheckOverwriteWithNonExistentFile verifies that CheckOverwrite returns nil
+// when the output file does not exist (no confirmation needed).
 func TestCheckOverwriteWithNonExistentFile(t *testing.T) {
 	tempDir := t.TempDir()
 	nonExistentFile := filepath.Join(tempDir, "does-not-exist.txt")
 
-	// With non-existent file, should not error
 	err := CheckOverwrite(nonExistentFile, false)
 	if err != nil {
 		t.Errorf("CheckOverwrite with non-existent file should not error: %v", err)
 	}
 }
 
+// TestValidateWorkerCountMax verifies that ValidateWorkerCount caps the worker
+// count at 2× the number of CPU cores to prevent resource exhaustion.
 func TestValidateWorkerCountMax(t *testing.T) {
-	// Test that worker count is capped at 2×CPU cores
 	result := ValidateWorkerCount(9999, true)
-	maxWorkers := 16 // Assuming 8 CPU cores
+	maxWorkers := 16
 
 	if result > maxWorkers {
 		t.Errorf("ValidateWorkerCount returned %d, should be capped at %d", result, maxWorkers)
@@ -47,8 +56,9 @@ func TestValidateWorkerCountMax(t *testing.T) {
 	}
 }
 
+// TestValidateWorkerCountDefault verifies that ValidateWorkerCount returns the
+// default worker count when given invalid input values (zero or negative).
 func TestValidateWorkerCountDefault(t *testing.T) {
-	// Test that invalid values return default
 	defaultWorkers := 4
 
 	result := ValidateWorkerCount(0, true)
@@ -62,22 +72,24 @@ func TestValidateWorkerCountDefault(t *testing.T) {
 	}
 }
 
+// TestValidateInputFilePermissions verifies that ValidateInputFile correctly
+// handles directory paths (os.Stat works on directories, returning no error).
 func TestValidateInputFilePermissions(t *testing.T) {
 	tempDir := t.TempDir()
-
-	// Create a directory instead of a file
 	dirPath := filepath.Join(tempDir, "testdir")
+
 	if err := os.Mkdir(dirPath, 0755); err != nil {
 		t.Fatalf("failed to create directory: %v", err)
 	}
 
-	// ValidateInputFile should accept directories? (os.Stat works on dirs)
 	err := ValidateInputFile(dirPath)
 	if err != nil {
 		t.Logf("Directory validation result: %v", err)
 	}
 }
 
+// TestCheckFileExistsWithDirectory verifies that CheckFileExists returns true
+// when checking a directory path (directories are considered existing paths).
 func TestCheckFileExistsWithDirectory(t *testing.T) {
 	tempDir := t.TempDir()
 

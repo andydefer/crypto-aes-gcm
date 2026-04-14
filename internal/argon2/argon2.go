@@ -1,9 +1,19 @@
 // Package argon2 provides Argon2id key derivation for password-based encryption.
 //
 // Argon2id is a memory-hard key derivation function (KDF) that provides strong
-// protection against GPU-based and side-channel attacks. This package implements
-// the recommended Argon2id variant with configurable parameters for different
-// security and performance trade-offs.
+// protection against GPU-based and side-channel attacks. It is the winner of
+// the Password Hashing Competition and is recommended for password-based
+// encryption.
+//
+// This package implements the recommended Argon2id variant with configurable
+// parameters for different security and performance trade-offs.
+//
+// Example:
+//
+//	params := argon2.DefaultParams()
+//	salt := make([]byte, 32)
+//	rand.Read(salt)
+//	key := argon2.DeriveKey("myPassword", salt, params)
 package argon2
 
 import "golang.org/x/crypto/argon2"
@@ -14,33 +24,36 @@ import "golang.org/x/crypto/argon2"
 // of the key derivation process. Higher values increase security but also
 // increase computation time.
 //
-// The parameters follow Argon2 specification:
-//   - Time: number of passes over memory (iteration count)
-//   - Memory: memory usage in KiB (e.g., 64*1024 = 64 MiB)
-//   - Threads: degree of parallelism (number of independent computation lanes)
-//   - KeyLen: desired output key length in bytes
+// The parameters follow the Argon2 specification:
+//
+//	Time:    number of passes over memory (iteration count)
+//	Memory:  memory usage in KiB (e.g., 64*1024 = 64 MiB)
+//	Threads: degree of parallelism (number of independent computation lanes)
+//	KeyLen:  desired output key length in bytes
+//
+// Recommended values:
+//   - Time:    4
+//   - Memory:  64*1024 (64 MiB)
+//   - Threads: number of CPU cores (max 4)
+//   - KeyLen:  32 (256 bits for AES-256)
 type Params struct {
-	Time    uint32 // Number of iterations (recommended: 4)
-	Memory  uint32 // Memory usage in KiB (recommended: 64*1024)
-	Threads uint8  // Degree of parallelism (recommended: number of CPU cores)
-	KeyLen  uint32 // Output key length in bytes (recommended: 32 for AES-256)
+	Time    uint32
+	Memory  uint32
+	Threads uint8
+	KeyLen  uint32
 }
 
 // DefaultParams returns secure, production-ready default parameters for Argon2id.
 //
 // These parameters provide approximately 100ms derivation time on modern hardware
-// and are suitable for most applications:
-//   - Time: 4 iterations for balanced security/performance
-//   - Memory: 64 MiB (64*1024 KiB) for strong memory-hardness
-//   - Threads: 4 parallel lanes for multi-core efficiency
-//   - KeyLen: 32 bytes (256 bits) for AES-256 compatibility
+// and are suitable for most applications.
 //
 // Returns:
-//   - Params with secure defaults suitable for general use cases
+//   - Params with Time=4, Memory=64MiB, Threads=4, KeyLen=32
 func DefaultParams() Params {
 	return Params{
 		Time:    4,
-		Memory:  64 * 1024, // 64 MiB in KiB
+		Memory:  64 * 1024, // 64 MiB
 		Threads: 4,
 		KeyLen:  32, // 256 bits for AES-256
 	}
@@ -52,15 +65,15 @@ func DefaultParams() Params {
 // into a cryptographically strong key suitable for symmetric encryption.
 //
 // Parameters:
-//   - passphrase: user-supplied password or passphrase (should be strong)
+//   - passphrase: user-supplied password or passphrase
 //   - salt: cryptographically random byte slice (minimum 16 bytes recommended)
-//   - params: Argon2id configuration parameters (use DefaultParams for most cases)
+//   - params: Argon2id configuration parameters
 //
 // Returns:
 //   - []byte: derived key of length params.KeyLen bytes
 //
-// Important:
-//   - Salt MUST be random, unique per encryption operation
+// Important security considerations:
+//   - Salt MUST be random and unique for each encryption operation
 //   - Salt MUST be stored alongside the ciphertext for decryption
 //   - Passphrase should have sufficient entropy (use strong passwords)
 //   - Changing any parameter produces completely different output
@@ -69,7 +82,7 @@ func DefaultParams() Params {
 //
 //	salt := make([]byte, 32)
 //	rand.Read(salt)
-//	key := DeriveKey("myPassphrase", salt, DefaultParams())
+//	key := argon2.DeriveKey("myPassphrase", salt, argon2.DefaultParams())
 func DeriveKey(passphrase string, salt []byte, params Params) []byte {
 	return argon2.IDKey(
 		[]byte(passphrase),

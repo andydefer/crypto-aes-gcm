@@ -53,10 +53,10 @@ func TestDecryptor_CorruptedFile(t *testing.T) {
 		{
 			name: "corrupt header HMAC",
 			corruptFunc: func(data []byte) []byte {
-				// Header offset: Magic(4) + Version(1) + Salt(32) + ChunkSize(8) = 45 bytes
-				// HMAC follows at offset 45, length 32
-				if len(data) > 45+32 {
-					data[45+16] = 0xFF
+				// Header offset: Magic(4) + Version(1) + Salt(16) + ChunkSize(4) = 25 bytes
+				// HMAC follows at offset 25, length 32
+				if len(data) > 25+32 {
+					data[25+16] = 0xFF
 				}
 				return data
 			},
@@ -65,7 +65,7 @@ func TestDecryptor_CorruptedFile(t *testing.T) {
 		{
 			name: "corrupt ciphertext",
 			corruptFunc: func(data []byte) []byte {
-				// Header(45) + HMAC(32) + Nonce(12) = 89 bytes offset
+				// Header(25) + HMAC(32) + Nonce(12) = 69 bytes offset
 				if len(data) > 100 {
 					data[100] = 0xFF
 				}

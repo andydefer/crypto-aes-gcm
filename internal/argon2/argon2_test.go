@@ -1,7 +1,19 @@
 // Package argon2 provides Argon2id key derivation for password-based encryption.
 //
-// This package implements the memory-hard Argon2id KDF with configurable parameters
-// for different security and performance trade-offs.
+// Argon2id is a memory-hard key derivation function (KDF) that provides strong
+// protection against GPU-based and side-channel attacks. It is the winner of
+// the Password Hashing Competition and is recommended for password-based
+// encryption.
+//
+// This package implements the recommended Argon2id variant with configurable
+// parameters for different security and performance trade-offs.
+//
+// Example:
+//
+//	params := argon2.DefaultParams()
+//	salt := make([]byte, 32)
+//	rand.Read(salt)
+//	key := argon2.DeriveKey("myPassword", salt, params)
 package argon2
 
 import (
@@ -10,34 +22,29 @@ import (
 	"testing"
 )
 
-// TestDeriveKey verifies that key derivation produces consistent outputs
-// with identical inputs and different outputs with different inputs.
+// TestDeriveKey verifies that key derivation produces a key of the expected length.
 func TestDeriveKey(t *testing.T) {
 	passphrase := "test-passphrase-123"
 	salt := make([]byte, 32)
 	_, _ = rand.Read(salt)
 	params := DefaultParams()
 
-	// Act: derive key
 	key := DeriveKey(passphrase, salt, params)
 
-	// Assert: key length matches expected
 	if len(key) != int(params.KeyLen) {
 		t.Errorf("expected key length %d, got %d", params.KeyLen, len(key))
 	}
 }
 
-// TestDeriveKeyDeterminism verifies that the same inputs produce the same output.
+// TestDeriveKeyDeterminism verifies that the same inputs produce identical keys.
 func TestDeriveKeyDeterminism(t *testing.T) {
 	passphrase := "deterministic-test-passphrase"
 	salt := []byte("fixed-salt-for-testing-1234567890")
 	params := DefaultParams()
 
-	// Act: derive key twice
 	key1 := DeriveKey(passphrase, salt, params)
 	key2 := DeriveKey(passphrase, salt, params)
 
-	// Assert: both derivations produce identical results
 	if !bytes.Equal(key1, key2) {
 		t.Error("key derivation is not deterministic with same inputs")
 	}
@@ -50,11 +57,9 @@ func TestDeriveKeySaltUniqueness(t *testing.T) {
 	salt2 := []byte("salt-2-for-testing-purpose-123456")
 	params := DefaultParams()
 
-	// Act: derive keys with different salts
 	key1 := DeriveKey(passphrase, salt1, params)
 	key2 := DeriveKey(passphrase, salt2, params)
 
-	// Assert: keys should be different
 	if bytes.Equal(key1, key2) {
 		t.Error("different salts produced identical keys")
 	}
@@ -67,11 +72,9 @@ func TestDeriveKeyPassphraseUniqueness(t *testing.T) {
 	salt := []byte("common-salt-for-testing-1234567890")
 	params := DefaultParams()
 
-	// Act: derive keys with different passphrases
 	key1 := DeriveKey(passphrase1, salt, params)
 	key2 := DeriveKey(passphrase2, salt, params)
 
-	// Assert: keys should be different
 	if bytes.Equal(key1, key2) {
 		t.Error("different passphrases produced identical keys")
 	}
@@ -89,27 +92,23 @@ func TestDeriveKeyDifferentParams(t *testing.T) {
 		KeyLen:  params1.KeyLen,
 	}
 
-	// Act: derive keys with different parameters
 	key1 := DeriveKey(passphrase, salt, params1)
 	key2 := DeriveKey(passphrase, salt, params2)
 
-	// Assert: keys should be different
 	if bytes.Equal(key1, key2) {
 		t.Error("different parameters produced identical keys")
 	}
 }
 
-// TestDeriveKeyEmptyPassphrase verifies that empty passphrases are handled gracefully.
+// TestDeriveKeyEmptyPassphrase verifies that empty passphrases are handled without panic.
 func TestDeriveKeyEmptyPassphrase(t *testing.T) {
 	passphrase := ""
 	salt := make([]byte, 32)
 	_, _ = rand.Read(salt)
 	params := DefaultParams()
 
-	// Act: derive key with empty passphrase
 	key := DeriveKey(passphrase, salt, params)
 
-	// Assert: key should be generated (not panic) and have correct length
 	if len(key) != int(params.KeyLen) {
 		t.Errorf("expected key length %d, got %d", params.KeyLen, len(key))
 	}
@@ -121,10 +120,8 @@ func TestDeriveKeyEmptySalt(t *testing.T) {
 	salt := []byte{}
 	params := DefaultParams()
 
-	// Act: derive key with empty salt
 	key := DeriveKey(passphrase, salt, params)
 
-	// Assert: key should be generated (not panic) and have correct length
 	if len(key) != int(params.KeyLen) {
 		t.Errorf("expected key length %d, got %d", params.KeyLen, len(key))
 	}
@@ -132,10 +129,8 @@ func TestDeriveKeyEmptySalt(t *testing.T) {
 
 // TestDefaultParams verifies that default parameters return expected values.
 func TestDefaultParams(t *testing.T) {
-	// Act: get default parameters
 	params := DefaultParams()
 
-	// Assert: all fields have expected values
 	if params.Time != 4 {
 		t.Errorf("expected Time=4, got %d", params.Time)
 	}
@@ -150,44 +145,28 @@ func TestDefaultParams(t *testing.T) {
 	}
 }
 
-// TestDeriveKeyKeyLength verifies that key length parameter is respected.
+// TestDeriveKeyKeyLength verifies that the key length parameter is respected.
 func TestDeriveKeyKeyLength(t *testing.T) {
 	passphrase := "test-passphrase"
 	salt := []byte("fixed-salt-for-length-testing-1234567890")
-	testCases := []struct {
+
+	tests := []struct {
 		name    string
 		keyLen  uint32
-		params  Params
 		wantLen int
 	}{
-		{
-			name:    "16 bytes (128 bits)",
-			keyLen:  16,
-			params:  Params{Time: 4, Memory: 64 * 1024, Threads: 4, KeyLen: 16},
-			wantLen: 16,
-		},
-		{
-			name:    "32 bytes (256 bits)",
-			keyLen:  32,
-			params:  Params{Time: 4, Memory: 64 * 1024, Threads: 4, KeyLen: 32},
-			wantLen: 32,
-		},
-		{
-			name:    "64 bytes (512 bits)",
-			keyLen:  64,
-			params:  Params{Time: 4, Memory: 64 * 1024, Threads: 4, KeyLen: 64},
-			wantLen: 64,
-		},
+		{"16 bytes (128 bits)", 16, 16},
+		{"32 bytes (256 bits)", 32, 32},
+		{"64 bytes (512 bits)", 64, 64},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Act: derive key with specified length
-			key := DeriveKey(passphrase, salt, tc.params)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params := Params{Time: 4, Memory: 64 * 1024, Threads: 4, KeyLen: tt.keyLen}
+			key := DeriveKey(passphrase, salt, params)
 
-			// Assert: key length matches expected
-			if len(key) != tc.wantLen {
-				t.Errorf("expected key length %d, got %d", tc.wantLen, len(key))
+			if len(key) != tt.wantLen {
+				t.Errorf("expected key length %d, got %d", tt.wantLen, len(key))
 			}
 		})
 	}

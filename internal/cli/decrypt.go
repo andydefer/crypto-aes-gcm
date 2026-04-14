@@ -1,3 +1,8 @@
+// Package cli provides the command-line interface for cryptool.
+//
+// It implements Cobra commands for encryption, decryption, interactive mode,
+// and version display. The package delegates business logic to the service layer
+// and UI rendering to the ui package.
 package cli
 
 import (
@@ -8,6 +13,16 @@ import (
 )
 
 // NewDecryptCmd creates the decrypt command.
+//
+// The command expects two arguments: input file (encrypted) and output file (plaintext).
+// Flags:
+//   - --pass, -p: Passphrase (required)
+//   - --workers, -w: Number of parallel workers (default: DefaultWorkers)
+//   - --force, -f: Force overwrite existing output file
+//   - --quiet, -q: Suppress progress output
+//
+// Returns:
+//   - *cobra.Command: Configured Cobra command
 func NewDecryptCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "decrypt [input] [output]",
@@ -25,6 +40,14 @@ func NewDecryptCmd() *cobra.Command {
 	return cmd
 }
 
+// runDecrypt executes the decryption operation.
+//
+// It validates the input file, checks for output file conflicts, and delegates
+// the actual decryption to the service layer.
+//
+// Parameters:
+//   - cmd: The Cobra command (provides stderr output)
+//   - args: Command arguments containing input and output file paths
 func runDecrypt(cmd *cobra.Command, args []string) {
 	input := args[0]
 	output := args[1]

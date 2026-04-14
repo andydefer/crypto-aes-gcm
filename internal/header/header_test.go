@@ -1,3 +1,8 @@
+// Package header provides file header serialization and HMAC authentication utilities.
+//
+// This package handles the deterministic binary serialization of encryption file headers
+// and provides HMAC-SHA256 functions for integrity verification. All operations are
+// designed to be cross-platform compatible and resistant to timing attacks.
 package header
 
 import (
@@ -5,6 +10,7 @@ import (
 	"testing"
 )
 
+// TestSerialize verifies that header serialization produces the correct byte length.
 func TestSerialize(t *testing.T) {
 	magic := [4]byte{'C', 'R', 'Y', 'P'}
 	version := byte(2)
@@ -18,6 +24,8 @@ func TestSerialize(t *testing.T) {
 	}
 }
 
+// TestSerializeDeterminism verifies that serialization produces identical output
+// for identical inputs.
 func TestSerializeDeterminism(t *testing.T) {
 	magic := [4]byte{'C', 'R', 'Y', 'P'}
 	version := byte(2)
@@ -32,6 +40,8 @@ func TestSerializeDeterminism(t *testing.T) {
 	}
 }
 
+// TestComputeHMAC verifies that HMAC computation is deterministic and produces
+// the correct output length (32 bytes for SHA-256).
 func TestComputeHMAC(t *testing.T) {
 	key := []byte("test-key-1234567890123456")
 	data := []byte("test data")
@@ -47,6 +57,8 @@ func TestComputeHMAC(t *testing.T) {
 	}
 }
 
+// TestVerifyHMAC verifies that HMAC verification correctly validates
+// authentic tags and rejects invalid ones.
 func TestVerifyHMAC(t *testing.T) {
 	key := []byte("test-key")
 	data := []byte("test data")
@@ -62,6 +74,7 @@ func TestVerifyHMAC(t *testing.T) {
 	}
 }
 
+// TestDeserializeMagic verifies magic byte extraction from serialized headers.
 func TestDeserializeMagic(t *testing.T) {
 	expected := [4]byte{'C', 'R', 'Y', 'P'}
 	serialized := Serialize(expected, 2, [16]byte{}, 1024)
@@ -78,6 +91,7 @@ func TestDeserializeMagic(t *testing.T) {
 	}
 }
 
+// TestDeserializeVersion verifies version byte extraction from serialized headers.
 func TestDeserializeVersion(t *testing.T) {
 	expected := byte(2)
 	serialized := Serialize([4]byte{}, expected, [16]byte{}, 1024)
@@ -94,6 +108,7 @@ func TestDeserializeVersion(t *testing.T) {
 	}
 }
 
+// TestDeserializeSalt verifies salt extraction from serialized headers.
 func TestDeserializeSalt(t *testing.T) {
 	expected := [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 	serialized := Serialize([4]byte{}, 2, expected, 1024)
@@ -104,6 +119,7 @@ func TestDeserializeSalt(t *testing.T) {
 	}
 }
 
+// TestDeserializeChunkSize verifies chunk size extraction from serialized headers.
 func TestDeserializeChunkSize(t *testing.T) {
 	expected := uint32(1024 * 1024)
 	serialized := Serialize([4]byte{}, 2, [16]byte{}, expected)
@@ -114,6 +130,7 @@ func TestDeserializeChunkSize(t *testing.T) {
 	}
 }
 
+// TestParseHeader verifies complete header deserialization into all components.
 func TestParseHeader(t *testing.T) {
 	expectedMagic := [4]byte{'C', 'R', 'Y', 'P'}
 	expectedVersion := byte(2)
@@ -140,6 +157,8 @@ func TestParseHeader(t *testing.T) {
 	}
 }
 
+// TestValidateHeader verifies that header validation correctly identifies
+// valid headers and rejects invalid ones.
 func TestValidateHeader(t *testing.T) {
 	validMagic := [4]byte{'C', 'R', 'Y', 'P'}
 	validVersion := byte(2)

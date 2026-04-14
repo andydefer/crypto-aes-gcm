@@ -1,3 +1,4 @@
+// Package cli provides the command-line interface for cryptool.
 package cli
 
 import (
@@ -8,16 +9,35 @@ import (
 )
 
 // NewVersionCmd creates the version command.
+//
+// This command displays version information including:
+//   - Application name and version (v2.0.0)
+//   - Cryptographic algorithms used (AES-256-GCM, Argon2id, Parallel)
+//   - Go build version
+//   - Operating system and architecture
+//   - Number of available CPU cores
+//
+// Returns:
+//   - *cobra.Command: Configured Cobra command that prints version info
 func NewVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
-		Short: "Show version",
+		Short: "Show version information",
+		Long:  "Display cryptool version, build information, and system details",
 		Run: func(cmd *cobra.Command, args []string) {
 			printVersion()
 		},
 	}
 }
 
+// printVersion displays the version banner and system information.
+//
+// The output includes:
+//   - ASCII art banner with application name and version
+//   - List of cryptographic algorithms used
+//   - Go runtime version
+//   - Target OS and architecture
+//   - Number of available CPU cores
 func printVersion() {
 	ui.HeaderColor.Printf(`
 ╔═══════════════════════════════════════╗
