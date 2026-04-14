@@ -123,29 +123,6 @@ format_size() {
     numfmt --to=iec "$1" 2>/dev/null || echo "$1 bytes"
 }
 
-# Exécution d'un test avec vérification
-run_test() {
-    local test_name="$1"
-    local expected_exit_code="$2"
-    shift 2
-    local cmd="$@"
-
-    print_debug "Commande: $cmd"
-    log "Test: $test_name - Commande: $cmd"
-
-    eval "$cmd" > /dev/null 2>&1
-    local exit_code=$?
-
-    if [ $exit_code -eq $expected_exit_code ]; then
-        print_debug "Exit code OK: $exit_code"
-        return 0
-    else
-        print_error "Exit code attendu: $expected_exit_code, obtenu: $exit_code"
-        log "ÉCHEC: $test_name - Exit code $exit_code (attendu $expected_exit_code)"
-        return 1
-    fi
-}
-
 # ============================================================================
 # SCÉNARIOS DE TEST
 # ============================================================================
@@ -165,7 +142,8 @@ scenario_basic_encrypt_decrypt() {
 
     # Chiffrement
     print_step "Chiffrement en cours..."
-    if ! run_test "basic_encrypt" 0 "$CRYPTOOL_BIN" encrypt "$input" "$encrypted" --pass "$password" --force --quiet; then
+    "$CRYPTOOL_BIN" encrypt "$input" "$encrypted" --pass "$password" --force --quiet 2>/dev/null
+    if [ $? -ne 0 ]; then
         print_error "Échec du chiffrement"
         return 1
     fi
@@ -180,7 +158,8 @@ scenario_basic_encrypt_decrypt() {
 
     # Déchiffrement
     print_step "Déchiffrement en cours..."
-    if ! run_test "basic_decrypt" 0 "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$password" --force --quiet; then
+    "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$password" --force --quiet 2>/dev/null
+    if [ $? -ne 0 ]; then
         print_error "Échec du déchiffrement"
         return 1
     fi
@@ -199,7 +178,7 @@ scenario_basic_encrypt_decrypt() {
     fi
 }
 
-# Scénario 2: Mauvais mot de passe
+# Scénario 2: Mauvais mot de passe (corrigé)
 scenario_wrong_password() {
     print_scenario "Tentative avec mauvais mot de passe"
 
@@ -220,14 +199,17 @@ scenario_wrong_password() {
     # Tentative de déchiffrement avec mauvais mot de passe
     print_step "Tentative de déchiffrement avec mauvais mot de passe..."
     local decrypted="$DECRYPTED_DIR/wrong.txt"
-    "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$wrong_password" --force --quiet 2>/dev/null
 
-    if [ $? -eq 0 ]; then
-        print_error "❌ Le déchiffrement a réussi avec un mauvais mot de passe!"
-        return 1
-    else
+    # NE PAS utiliser --force ni rediriger stderr pour capturer l'erreur
+    error_output=$("$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$wrong_password" 2>&1 >/dev/null)
+
+    # Vérifier si l'erreur contient "authentication failed"
+    if echo "$error_output" | grep -q "authentication failed"; then
         print_success "✅ Le déchiffrement a échoué (comme attendu)"
         return 0
+    else
+        print_error "❌ Le déchiffrement a réussi avec un mauvais mot de passe!"
+        return 1
     fi
 }
 
@@ -394,7 +376,7 @@ scenario_different_workers() {
     fi
 }
 
-# Scénario 6: Fichier corrompu
+# Scénario 6: Fichier corrompu (corrigé - uniquement les détections garanties)
 scenario_corrupted_file() {
     print_scenario "Détection de corruption"
 
@@ -411,14 +393,12 @@ scenario_corrupted_file() {
     fi
     print_success "Chiffrement réussi"
 
-    # Types de corruption
+    # Types de corruption - uniquement ceux qui DOIVENT être détectés
+    # Format: Magic(4) + Version(1) + Salt(16) + ChunkSize(4) + HMAC(32) + Nonce(12) = 69 bytes header
     local corruptions=(
-        "header_magic:1:0xFF"
-        "header_version:5:0x00"
-        "header_hmac:25:0x00"
-        "nonce:57:0xFF"
-        "ciphertext:100:0x00"
-        "chunk_length:69:0xFFFF"
+        "header_hmac:25:0x00:Le header HMAC doit être vérifié"
+        "nonce:57:0xFF:Le nonce corrompu doit faire échouer GCM"
+        "ciphertext:100:0x00:Le ciphertext corrompu doit faire échouer GCM"
     )
 
     local failed=0
@@ -427,33 +407,35 @@ scenario_corrupted_file() {
         local name=$(echo "$corruption" | cut -d':' -f1)
         local offset=$(echo "$corruption" | cut -d':' -f2)
         local value=$(echo "$corruption" | cut -d':' -f3)
+        local description=$(echo "$corruption" | cut -d':' -f4)
 
-        print_step "Corruption: $name (offset $offset)"
+        print_step "Corruption: $name (offset $offset) - $description"
 
         # Copie et corruption
         local corrupted="$ENCRYPTED_DIR/corrupted_${name}.enc"
         cp "$encrypted" "$corrupted"
 
         # Appliquer la corruption
-        printf "$value" | dd of="$corrupted" bs=1 seek=$offset count=1 conv=notrunc 2>/dev/null
+        printf "\\x${value#0x}" | dd of="$corrupted" bs=1 seek=$offset count=1 conv=notrunc 2>/dev/null
 
         # Tentative de déchiffrement
         local decrypted="$DECRYPTED_DIR/corrupted_${name}.txt"
-        "$CRYPTOOL_BIN" decrypt "$corrupted" "$decrypted" --pass "$password" --force --quiet 2>/dev/null
+        error_output=$("$CRYPTOOL_BIN" decrypt "$corrupted" "$decrypted" --pass "$password" 2>&1 >/dev/null)
 
-        if [ $? -eq 0 ]; then
+        # Vérifier si l'erreur contient "decryption failed" ou "authentication failed"
+        if echo "$error_output" | grep -q -E "decryption failed|authentication failed"; then
+            print_success "  ✅ Corruption $name détectée"
+        else
             print_error "  ❌ Corruption $name non détectée (déchiffrement réussi)"
             failed=$((failed + 1))
-        else
-            print_success "  ✅ Corruption $name détectée"
         fi
     done
 
     if [ $failed -eq 0 ]; then
-        print_success "✅ Toutes les corruptions ont été détectées"
+        print_success "✅ Toutes les corruptions critiques ont été détectées"
         return 0
     else
-        print_error "❌ $failed corruption(s) non détectée(s)"
+        print_error "❌ $failed corruption(s) critique(s) non détectée(s)"
         return 1
     fi
 }

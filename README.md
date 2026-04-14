@@ -2,7 +2,7 @@
 
 [![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](.)
+[![Tests](https://img.shields.io/badge/tests-111%20passed-brightgreen.svg)](.)
 [![Cobra](https://img.shields.io/badge/cli-cobra-blue)](https://github.com/spf13/cobra)
 [![GoDoc](https://godoc.org/github.com/andydefer/crypto-aes-gcm?status.svg)](https://godoc.org/github.com/andydefer/crypto-aes-gcm)
 
@@ -10,382 +10,261 @@ Un outil de chiffrement sécurisé et performant utilisant **AES-256-GCM** en mo
 
 ## ✨ Fonctionnalités
 
-- 🔐 **Chiffrement AES-256-GCM** authentifié
-- 🧂 **Dérivation de clé Argon2id** résistante aux attaques GPU
-- 🚀 **Traitement parallèle** pour les gros fichiers (configurable)
-- 📦 **Mode streaming** - aucun chargement complet en mémoire
-- ✅ **Intégrité vérifiée** avec HMAC-SHA256 (header + contenu)
-- 💻 **Interface CLI moderne** avec Cobra, couleurs et barre de progression
-- 📚 **Bibliothèque Go** réutilisable
-- 🔄 **Concurrent** - chiffrement multiple en parallèle
-- 🎨 **Interface utilisateur interactive** avec prompts de confirmation
+- 🔐 **Chiffrement ultra-sécurisé** avec AES-256-GCM (authentification par chunk)
+- 🎮 **Mode interactif** - Interface guidée sans ligne de commande complexe
+- 🚀 **Traitement parallèle** configurable (jusqu'à 2×CPU cores)
+- 📦 **Mode streaming pur** - mémoire constante (O(1))
+- 💻 **Interface colorée** avec barre de progression
+- 🔄 **Deux modes d'utilisation** : CLI classique ou interactif
+- 🛡️ **Validation des mots de passe** (8+ caractères, maj/min, chiffre)
+- ✅ **Intégrité vérifiée** par chunk (GCM AEAD)
+- 🧂 **Dérivation Argon2id** résistante aux attaques GPU/ASIC
 
-## 🏗️ Architecture
+---
+
+# 👤 Pour les utilisateurs finaux
+
+## Installation rapide
+
+### Linux / macOS
+
+```bash
+# Compilation depuis les sources
+git clone https://github.com/andydefer/crypto-aes-gcm.git
+cd crypto-aes-gcm
+make build
+sudo cp build/cryptool /usr/local/bin/
+
+# Ou télécharger le binaire (releases)
+wget https://github.com/andydefer/crypto-aes-gcm/releases/latest/download/cryptool-linux-amd64
+chmod +x cryptool-linux-amd64
+sudo mv cryptool-linux-amd64 /usr/local/bin/cryptool
+```
+
+### Windows
+
+```powershell
+# Télécharger cryptool-windows-amd64.exe
+# Le placer dans C:\Windows\System32\
+```
+
+### Vérifier l'installation
+
+```bash
+cryptool version
+```
+
+## 🎮 Mode interactif (Nouveau !)
+
+Le mode interactif guide l'utilisateur étape par étape sans mémoriser les options :
+
+```bash
+cryptool interact
+```
+
+### Menu interactif :
+
+```
+╔════════════════════════════════════════════════════════════════════╗
+║                    🎮 CRYPTOOL - MODE INTERACTIF                    ║
+║                                                                    ║
+║  Suivez les invites pour chiffrer ou déchiffrer vos fichiers       ║
+║  Toutes les entrées seront validées avant exécution                ║
+║                                                                    ║
+║  Ctrl+C = Retour au menu | Ctrl+D = Quitter                        ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝
+
+📋 Que souhaitez-vous faire:
+  ▸ 🔒  Chiffrer un fichier
+    🔓  Déchiffrer un fichier
+    🚪  Quitter
+```
+
+### Exemple de session interactive (chiffrement) :
+
+```
+🔐 CHIFFREMENT DE FICHIER
+────────────────────────────────────────
+
+📁 Fichier à chiffrer: document.pdf
+   ✓ document.pdf
+
+📂 Fichier de sortie: document.pdf.enc
+   ✓ document.pdf.enc
+
+🔑 Mot de passe: **********
+   ✓ **********
+
+✅ Confirmation: **********
+   ✓ **********
+
+⚙️  Workers (défaut: 4, max: 16): 4
+   ✓ 4 workers
+
+❓ ⚠️  Le fichier existe déjà. Écraser ? [Y/n]: y
+
+🔒 Chiffrement [████████████████████] 100%
+✅ Fichier chiffré : document.pdf.enc
+```
+
+## Commandes de base
+
+### Mode non-interactif (CLI classique)
+
+```bash
+# Chiffrer un fichier
+cryptool encrypt monfichier.txt monfichier.enc --pass "monMotDePasse"
+
+# Déchiffrer un fichier
+cryptool decrypt monfichier.enc monfichier.txt --pass "monMotDePasse"
+
+# Aide
+cryptool --help
+cryptool encrypt --help
+```
+
+### Mode interactif
+
+```bash
+# Lancer le mode interactif
+cryptool interact
+```
+
+## Options importantes
+
+| Option | Description |
+|--------|-------------|
+| `--pass, -p` | Votre mot de passe (obligatoire en mode CLI) |
+| `--workers, -w` | Accélération pour gros fichiers (défaut: 4, max: 2×CPU) |
+| `--force, -f` | Écraser sans demander confirmation |
+| `--quiet, -q` | Mode silencieux (pas de barre de progression) |
+
+## Exemples quotidiens
+
+### 📄 Documents personnels
+
+```bash
+# Mode CLI
+cryptool encrypt declaration-2024.pdf declaration-2024.pdf.enc --pass "MotDePasseFort123!"
+
+# Mode interactif
+cryptool interact
+# → Choisir "Chiffrer" → suivre les invites
+```
+
+### 🎥 Vidéos (gros fichiers)
+
+```bash
+# Avec optimisation parallèle (8 workers)
+cryptool encrypt video.mp4 video.mp4.enc --pass "Vacances2024!" --workers 8
+```
+
+### 📦 Chiffrement de dossier
+
+```bash
+# Compresser + chiffrer
+tar czf - dossier/ | cryptool encrypt /dev/stdin backup.enc --pass "Archive2024!"
+
+# Déchiffrer + décompresser
+cryptool decrypt backup.enc /dev/stdout --pass "Archive2024!" | tar xzf -
+```
+
+## Dépannage rapide
+
+| Problème | Cause probable | Solution |
+|----------|---------------|----------|
+| `pass required` | Mot de passe oublié | Ajouter `--pass` ou utiliser mode interactif |
+| `le fichier n'existe pas` | Fichier source introuvable | Vérifier le chemin |
+| `le fichier existe déjà` | Fichier destination existe | Utiliser `--force` ou mode interactif (demande confirmation) |
+| `le mot de passe ne correspond pas` | Confirmation erronée | Mode interactif : ressaisir correctement |
+| `header authentication failed` | Mot de passe incorrect | Vérifier la casse et les caractères spéciaux |
+
+### Exigences des mots de passe (mode interactif)
+
+- Minimum **8 caractères**
+- Au moins **une majuscule** (A-Z)
+- Au moins **une minuscule** (a-z)
+- Au moins **un chiffre** (0-9)
+
+---
+
+# 👨‍💻 Pour les développeurs
+
+## Architecture
 
 ```
 crypto-aes-gcm/
 ├── cmd/
 │   └── cryptool/           # Application CLI (Cobra)
-│       ├── main.go         # Point d'entrée
-│       └── version.go      # Version info
+│       ├── main.go         # Point d'entrée (bootstrap pur)
+│       └── main_test.go    # Tests unitaires
 ├── internal/
 │   ├── argon2/             # Dérivation de clé Argon2id
-│   └── header/             # Utilitaires de header et HMAC
+│   ├── cli/                # Commandes Cobra (encrypt, decrypt, interact)
+│   ├── header/             # Sérialisation et validation des headers
+│   ├── service/            # Orchestration métier
+│   ├── ui/                 # Interface utilisateur (couleurs, prompts, progress)
+│   └── utils/              # Utilitaires (formatage taille)
 ├── pkg/
-│   └── cryptolib/          # Bibliothèque exportable
+│   └── cryptolib/          # Bibliothèque exportable (cœur crypto)
 │       ├── encrypt.go      # Chiffrement parallèle
-│       ├── decrypt.go      # Déchiffrement
+│       ├── decrypt.go      # Déchiffrement streaming
+│       ├── stream.go       # API streaming simplifiée (DecryptStream)
 │       ├── types.go        # Types et constantes
-│       └── errors.go       # Erreurs sentinelles
-├── go.mod
-├── go.sum
-├── Makefile                # Commandes de build et tests
+│       ├── errors.go       # Erreurs sentinelles
+│       └── *_test.go       # Tests complets (>70 tests)
+├── tests/                  # Tests shell et scénarios
+│   ├── run_tests.sh        # Scripts de test réalistes
+│   ├── test_scenarios.sh   # Scénarios avancés
+│   └── generate_test_files.sh
+├── build/                  # Binaires compilés
+├── private/                # Artefacts générés (diffs, concat)
+├── Makefile                # Commandes de build, tests, release
 └── README.md
 ```
 
-## 📦 Installation
+## Installation pour les développeurs
 
 ### Prérequis
 
 - Go 1.23 ou supérieur
-- Dépendances automatiquement gérées par Go modules
+- `make` (optionnel)
+- `gotestsum` (optionnel)
 
 ### Depuis les sources
 
 ```bash
 git clone https://github.com/andydefer/crypto-aes-gcm.git
 cd crypto-aes-gcm
+
+# Build
 make build
-# ou
-go build -o cryptool ./cmd/cryptool
-```
-
-### Installation système
-
-```bash
-sudo cp cryptool /usr/local/bin/
-```
-
-### Via go install
-
-```bash
-go install github.com/andydefer/crypto-aes-gcm/cmd/cryptool@latest
-```
-
-## 🚀 Utilisation CLI
-
-### Syntaxe moderne (recommandée)
-
-```bash
-# Aide générale
-cryptool --help
-cryptool help
-
-# Chiffrer un fichier
-cryptool encrypt fichier.txt fichier.enc --pass "monMotDePasse"
-
-# Déchiffrer un fichier
-cryptool decrypt fichier.enc fichier.dec.txt --pass "monMotDePasse"
-
-# Version
-cryptool version
-```
-
-### Options disponibles
-
-| Option | Description | Défaut |
-|--------|-------------|--------|
-| `--pass, -p` | Mot de passe (requis) | - |
-| `--workers, -w` | Nombre de workers parallèles | 4 |
-| `--force, -f` | Écraser sans confirmation | false |
-| `--quiet, -q` | Mode silencieux (pas de barre de progression) | false |
-
-### Exemples avancés
-
-```bash
-# Gros fichier avec workers optimisés (2× CPU cores max)
-cryptool encrypt video.mp4 video.enc --pass "secure" --workers 8
-
-# Mode silencieux pour les scripts
-cryptool encrypt data.bin data.enc --pass "secret" --quiet
-
-# Forcer l'écrasement sans confirmation
-cryptool encrypt output.txt output.enc --pass "pass" --force
-
-# Dans un pipeline (avec /dev/stdin)
-cat secret.txt | cryptool encrypt /dev/stdin data.enc --pass "pass"
-
-# Compression + chiffrement
-tar czf - dossier/ | cryptool encrypt /dev/stdin backup.tar.gz.enc --pass "pass"
-```
-
-### Exemple d'exécution
-
-```bash
-$ cryptool encrypt test.txt test.enc --pass "Hello@0405" --workers 8
-
-🔐 Crypto-AES-GCM - ENCRYPT MODE
-──────────────────────────────────────────────────
-📁 Input:   test.txt
-📂 Output:  test.enc
-⚙️  Workers: 8
-──────────────────────────────────────────────────
-
-🔒 Encrypting [████████████████████████████████████████] 100% (245 B/245 B)
-
-✅ Encryption successful!
-📄 Output: test.enc
-📏 Size:   245 B
-```
-
-## 🔄 Migration depuis l'ancienne syntaxe
-
-L'ancienne syntaxe avec flags (`-mode`, `-in`, `-out`) est toujours supportée pour la rétrocompatibilité, mais nous recommandons d'utiliser la nouvelle syntaxe avec sous-commandes.
-
-| Ancienne syntaxe | Nouvelle syntaxe |
-|-----------------|------------------|
-| `cryptool -mode encrypt -in file.txt -out file.enc -pass pwd` | `cryptool encrypt file.txt file.enc --pass pwd` |
-| `cryptool -mode decrypt -in file.enc -out dec.txt -pass pwd` | `cryptool decrypt file.enc dec.txt --pass pwd` |
-| `cryptool -mode encrypt -in file.txt -out file.enc -pass pwd -workers 8` | `cryptool encrypt file.txt file.enc --pass pwd --workers 8` |
-| `cryptool -mode encrypt -in file.txt -out file.enc -pass pwd -force` | `cryptool encrypt file.txt file.enc --pass pwd --force` |
-
-## 📚 Utilisation comme bibliothèque
-
-### Installation
-
-```bash
-go get github.com/andydefer/crypto-aes-gcm
-```
-
-### Exemple basique
-
-```go
-package main
-
-import (
-    "log"
-    "github.com/andydefer/crypto-aes-gcm/pkg/cryptolib"
-)
-
-func main() {
-    // Chiffrement
-    encryptor, err := cryptolib.NewEncryptor(4)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    if err := encryptor.EncryptFile("input.txt", "output.enc", "password"); err != nil {
-        log.Fatal(err)
-    }
-
-    // Pour déchiffrer, vous avez besoin du salt présent dans le fichier
-    // Lisez d'abord le header pour extraire le salt
-    // Voir l'exemple complet dans la documentation
-}
-```
-
-### Streaming
-
-```go
-func encryptStream(r io.Reader, w io.Writer, pass string) error {
-    encryptor, err := cryptolib.NewEncryptor(4)
-    if err != nil {
-        return err
-    }
-    return encryptor.Encrypt(r, w, pass)
-}
-
-func decryptStream(r io.Reader, w io.Writer, pass string) error {
-    return cryptolib.DecryptStream(r, w, pass)
-}
-```
-
-### Traitement concurrent de plusieurs fichiers
-
-```go
-func encryptFiles(files []string, pass string) error {
-    encryptor, err := cryptolib.NewEncryptor(4)
-    if err != nil {
-        return err
-    }
-
-    var wg sync.WaitGroup
-    errChan := make(chan error, len(files))
-
-    for _, f := range files {
-        wg.Add(1)
-        go func(file string) {
-            defer wg.Done()
-            if err := encryptor.EncryptFile(file, file+".enc", pass); err != nil {
-                errChan <- err
-            }
-        }(f)
-    }
-
-    wg.Wait()
-    close(errChan)
-
-    for err := range errChan {
-        if err != nil {
-            return err
-        }
-    }
-    return nil
-}
-```
-
-### Lecture du header pour extraction du salt
-
-```go
-func getSaltFromEncryptedFile(path string) ([]byte, error) {
-    f, err := os.Open(path)
-    if err != nil {
-        return nil, err
-    }
-    defer f.Close()
-
-    var header cryptolib.FileHeader
-    if err := binary.Read(f, binary.BigEndian, &header); err != nil {
-        return nil, err
-    }
-
-    return header.Salt[:], nil
-}
-```
-
-## 🔒 Sécurité
-
-### Paramètres cryptographiques
-
-| Algorithme | Paramètres | Justification |
-|------------|------------|----------------|
-| **Chiffrement** | AES-256-GCM | Authenticated encryption with associated data (AEAD) |
-| **Dérivation** | Argon2id (time=4, memory=64MB, threads=4) | Résistant aux attaques GPU et ASIC |
-| **Intégrité header** | HMAC-SHA256 | Vérification avant déchiffrement |
-| **Intégrité contenu** | HMAC-SHA256 global | Détection de corruption/modification |
-| **Nonce** | 12 bytes (aléatoire + counter) | Counter sur 8 bytes, safe pour 2^64 chunks |
-| **Salt** | 16 bytes (aléatoire) | Unique par fichier, prévient les rainbow tables |
-| **Chunk size** | 1 MB par défaut | Bon compromis mémoire/performance |
-
-### Format du fichier chiffré
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        FILE FORMAT                          │
-├─────────────────────────────────────────────────────────────┤
-│ HEADER (25 bytes)                                           │
-│  ├─ Magic: "CRYP" (4 bytes)                                 │
-│  ├─ Version: 2 (1 byte)                                     │
-│  ├─ Salt: 16 bytes (Argon2id salt)                          │
-│  └─ ChunkSize: 4 bytes (uint32)                             │
-├─────────────────────────────────────────────────────────────┤
-│ HEADER HMAC (32 bytes)                                      │
-├─────────────────────────────────────────────────────────────┤
-│ BASE NONCE (12 bytes)                                       │
-├─────────────────────────────────────────────────────────────┤
-│ CHUNK 1                                                     │
-│  ├─ Length: 4 bytes (uint32)                                │
-│  └─ Ciphertext: variable (GCM sealed)                       │
-├─────────────────────────────────────────────────────────────┤
-│ CHUNK 2...N                                                 │
-│  ├─ Length: 4 bytes                                         │
-│  └─ Ciphertext: variable                                    │
-├─────────────────────────────────────────────────────────────┤
-│ END MARKER (4 bytes) = 0                                    │
-├─────────────────────────────────────────────────────────────┤
-│ GLOBAL HMAC (32 bytes) - HMAC-SHA256 of all ciphertexts     │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## 🧪 Tests
-
-```bash
-# Tous les tests
-make test
-# ou
-go test -v ./...
-
-# Avec couverture
-make test-coverage
-# ou
-go test -cover ./...
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
-
-# Mode short (ignore les gros fichiers)
-make test-short
-# ou
-go test -short -v ./...
-
-# Avec race detector
-go test -race ./...
-
-# Benchmarks
-go test -bench=. ./...
-```
-
-## 📊 Performance
-
-Tests réalisés sur **Intel i7-1165G7 @ 2.80GHz**, SSD NVMe, 16GB RAM.
-
-| Fichier | Workers | Temps encrypt | Temps decrypt | Vitesse |
-|---------|---------|---------------|---------------|---------|
-| 10 MB | 1 | 0.15s | 0.14s | ~70 MB/s |
-| 10 MB | 4 | 0.08s | 0.07s | ~140 MB/s |
-| 100 MB | 4 | 0.65s | 0.60s | ~160 MB/s |
-| 1 GB | 8 | 6.2s | 5.8s | ~165 MB/s |
-| 10 GB | 8 | 62s | 58s | ~165 MB/s |
-
-*Les performances sont limitées par l'I/O disque au-delà de 1 GB.*
-
-## 🛠️ Makefile Commands
-
-```bash
-# Aide
-make help
-
-# Build pour la plateforme courante
-make build
-
-# Build pour toutes les plateformes (Linux, Windows, macOS)
-make build-all
 
 # Tests
-make test              # Tous les tests
-make test-short        # Tests rapides
-make test-coverage     # Tests avec couverture
+make test
 
-# Nettoyage
-make clean             # Fichiers temporaires
-make clean-all         # Nettoyage complet
-
-# Gestion de version
-make git-commit-push   # Commit et push
-make git-tag           # Créer un tag
-make release           # Créer une release
-
-# Concaténation des sources
-make concat-all        # Génère all.txt
+# Installation locale
+go install ./cmd/cryptool
 ```
 
-## 📖 API Reference
+## API Reference
 
 ### Types exportés
 
 ```go
-type Encryptor struct {
-    // contient des champs non exportés
-}
+// Encryptor handles parallel streaming encryption
+type Encryptor struct {}
 
-type Decryptor struct {
-    // contient des champs non exportés
-}
+// Decryptor handles streaming decryption
+type Decryptor struct {}
 
+// FileHeader represents the encrypted file header
 type FileHeader struct {
-    Magic     [4]byte
-    Version   byte
-    Salt      [SaltSize]byte
-    ChunkSize uint32
+    Magic     [4]byte    // "CRYP"
+    Version   byte       // Format version (2)
+    Salt      [16]byte   // Argon2id salt
+    ChunkSize uint32     // Chunk size in bytes (1MB default)
 }
 ```
 
@@ -400,41 +279,24 @@ const (
     KeySize          = 32
     DefaultChunkSize = 1024 * 1024  // 1MB
     DefaultWorkers   = 4
+    MaxPendingChunks = 100          // Anti-DoS
 )
 ```
 
-### Fonctions - Encryptor
+### Fonctions principales
 
 ```go
-// NewEncryptor crée un nouvel encrypteur avec le nombre de workers spécifié.
-// Le nombre est automatiquement limité entre 1 et 2×CPU cores.
+// Encryptor
 func NewEncryptor(workers int) (*Encryptor, error)
-
-// EncryptFile chiffre un fichier sur le disque.
 func (e *Encryptor) EncryptFile(inputPath, outputPath, passphrase string) error
-
-// Encrypt lit depuis un io.Reader et écrit les données chiffrées dans un io.Writer.
 func (e *Encryptor) Encrypt(r io.Reader, w io.Writer, passphrase string) error
-```
 
-### Fonctions - Decryptor
-
-```go
-// NewDecryptor crée un nouveau décrypteur avec la passphrase et le salt fournis.
+// Decryptor
 func NewDecryptor(passphrase string, salt []byte) (*Decryptor, error)
-
-// DecryptFile déchiffre un fichier sur le disque.
 func (d *Decryptor) DecryptFile(inputPath, outputPath string) error
-
-// Decrypt lit depuis un io.Reader et écrit les données déchiffrées dans un io.Writer.
 func (d *Decryptor) Decrypt(r io.Reader, w io.Writer) error
-```
 
-### Fonctions utilitaires
-
-```go
-// DecryptStream est une fonction pratique pour déchiffrer directement depuis un Reader.
-// Combine la lecture du header, la vérification HMAC et le déchiffrement.
+// Convenience function
 func DecryptStream(r io.Reader, w io.Writer, passphrase string) error
 ```
 
@@ -445,38 +307,131 @@ var (
     ErrInvalidMagic       = errors.New("invalid magic bytes")
     ErrUnsupportedVersion = errors.New("unsupported file version")
     ErrHeaderAuthFailed   = errors.New("header authentication failed")
-    ErrGlobalHMACFailed   = errors.New("global HMAC verification failed")
     ErrDecryptionFailed   = errors.New("decryption failed")
 )
 ```
 
-## 🔧 Dépannage
+## Makefile Commands
 
-### Erreur : "invalid magic bytes"
+```bash
+# Aide complète
+make help
 
-**Cause** : Le fichier n'a pas été chiffré avec cet outil ou est corrompu.
+# 🚀 Run (exécution directe sans build)
+make run-interact          # Mode interactif
+make run-version           # Affiche la version
+make run ARGS="encrypt test.txt test.enc --pass pwd"  # Arguments personnalisés
+make run-encrypt INPUT=file.txt OUTPUT=file.enc PASS=secret
+make run-decrypt INPUT=file.enc OUTPUT=file.txt PASS=secret
 
-**Solution** : Vérifiez que vous utilisez le bon fichier et qu'il a été chiffré avec cryptool.
+# 🔨 Build
+make build                 # Build pour plateforme courante
+make build-all             # Build multi-plateformes (Linux, Windows, macOS)
 
-### Erreur : "header authentication failed"
+# 🧪 Tests Go
+make test                  # Tous les tests Go
+make test-short            # Tests rapides
+make test-coverage         # Tests avec couverture
+make gotestsum             # Tests avec formateur
 
-**Cause** : Mot de passe incorrect ou fichier corrompu.
+# 📋 Tests shell réalistes
+make test-scripts          # Scripts de test
+make test-scenarios        # Scénarios avancés
+make test-all              # Tous les tests (Go + scripts)
 
-**Solution** : Vérifiez votre mot de passe. Si le mot de passe est correct, le fichier est probablement corrompu.
+# 📁 Génération fichiers de test
+make generate-test-files       # Génère fichiers (dont 50MB+)
+make generate-test-files-short # Mode court
 
-### Erreur : "decryption failed (chunk X)"
+# 🧹 Nettoyage
+make clean                # Fichiers temporaires
+make clean-test-data      # Données de test
+make clean-all            # Nettoyage complet
 
-**Cause** : Fichier corrompu ou clé incorrecte.
+# 🔄 Version Control
+make git-commit-push      # Commit et push
+make git-tag              # Créer un tag
+make generate-ai-diff     # Génère diff pour revue AI
+make release              # Créer une release
+```
 
-**Solution** : Le fichier a été modifié après chiffrement. Utilisez une sauvegarde si disponible.
+## Tests
 
-## 🤝 Contribution
+```bash
+# Tous les tests Go (>110 tests)
+make test
 
-1. Fork le projet
-2. Créez votre branche (`git checkout -b feature/amazing`)
-3. Committez vos changements (`git commit -m 'feat: add amazing feature'`)
-4. Push vers la branche (`git push origin feature/amazing`)
-5. Ouvrez une Pull Request
+# Tests avec gotestsum (formatage amélioré)
+make gotestsum
+
+# Tests shell réalistes
+make test-scripts
+
+# Scénarios avancés
+make test-scenarios
+
+# Tous les tests (Go + scripts + scénarios)
+make test-all
+
+# Mode court (ignore gros fichiers)
+make test-all-short
+
+# Avec couverture
+make test-coverage
+go tool cover -html=coverage.out
+```
+
+## Format du fichier chiffré (v2.0.0)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        FILE FORMAT                          │
+├─────────────────────────────────────────────────────────────┤
+│ HEADER (25 bytes)                                           │
+│  ├─ Magic: "CRYP" (4 bytes)                                 │
+│  ├─ Version: 2 (1 byte)                                     │
+│  ├─ Salt: 16 bytes (Argon2id salt)                          │
+│  └─ ChunkSize: 4 bytes (uint32)                             │
+├─────────────────────────────────────────────────────────────┤
+│ HEADER HMAC (32 bytes) - HMAC-SHA256 du header              │
+├─────────────────────────────────────────────────────────────┤
+│ BASE NONCE (12 bytes) - Aléatoire par fichier               │
+├─────────────────────────────────────────────────────────────┤
+│ CHUNK 1                                                     │
+│  ├─ Length: 4 bytes (uint32)                                │
+│  └─ Ciphertext: variable (GCM sealed, authentifié)          │
+├─────────────────────────────────────────────────────────────┤
+│ CHUNK 2...N                                                 │
+├─────────────────────────────────────────────────────────────┤
+│ END MARKER (4 bytes) = 0                                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Performance
+
+Tests sur Intel i7-1165G7 @ 2.80GHz, SSD NVMe
+
+| Fichier | Workers | Encrypt | Decrypt | Vitesse |
+|---------|---------|---------|---------|---------|
+| 10 MB | 1 | 0.13s | 0.14s | ~75 MB/s |
+| 10 MB | 4 | 0.11s | 0.12s | ~90 MB/s |
+| 10 MB | 8 | 0.10s | 0.11s | ~100 MB/s |
+| 100 MB | 4 | 0.65s | 0.60s | ~160 MB/s |
+| 1 GB | 8 | 6.2s | 5.8s | ~165 MB/s |
+
+## Sécurité - Détails techniques
+
+| Algorithme | Paramètres | Justification |
+|------------|------------|----------------|
+| **Chiffrement** | AES-256-GCM | Authenticated encryption (AEAD) |
+| **Dérivation** | Argon2id (time=4, memory=64MB, threads=4) | Résistant aux attaques GPU/ASIC |
+| **Intégrité header** | HMAC-SHA256 | Vérification avant déchiffrement |
+| **Authentification** | GCM par chunk | Chaque chunk authentifié individuellement |
+| **Nonce** | 12 bytes (base + XOR index) | Safe pour 2^64 chunks |
+| **Salt** | 16 bytes (aléatoire) | Unique par fichier |
+| **Chunk size** | 1 MB | Bon compromis mémoire/performance |
+
+## Contribution
 
 ### Conventions de commit
 
@@ -488,47 +443,39 @@ Nous suivons [Conventional Commits](https://www.conventionalcommits.org/) :
 - `test:` tests
 - `refactor:` refactorisation
 - `chore:` maintenance
+- `perf:` amélioration de performance
+
+### Processus
+
+1. Fork le projet
+2. Créez votre branche (`git checkout -b feature/amazing`)
+3. Committez (`git commit -m 'feat: add amazing feature'`)
+4. Push (`git push origin feature/amazing`)
+5. Ouvrez une Pull Request
 
 ## 📝 License
 
-MIT License - voir le fichier [LICENSE](LICENSE) pour plus de détails.
+MIT License
 
 ## ⚠️ Avertissement
 
-Ce logiciel est fourni "tel quel". Bien que des efforts aient été faits pour assurer sa sécurité, utilisez-le à vos propres risques. Pour des données extrêmement sensibles, consultez un expert en sécurité.
-
-**Recommandations de sécurité :**
-- Utilisez des mots de passe longs et complexes (minimum 12 caractères)
-- Ne partagez jamais vos mots de passe
-- Sauvegardez vos fichiers chiffrés
-- Vérifiez l'intégrité des fichiers après déchiffrement
+Ce logiciel est fourni "tel quel". Pour des données extrêmement sensibles, consultez un expert en sécurité.
 
 ## 🙏 Remerciements
 
 - [Argon2](https://github.com/P-H-C/phc-winner-argon2) - Password Hashing Competition winner
 - [AES-GCM](https://csrc.nist.gov/publications/detail/sp/800-38d/final) - NIST standard
 - [Cobra](https://github.com/spf13/cobra) - CLI framework
-- [Color](https://github.com/fatih/color) - Terminal colors
-- [Progressbar](https://github.com/schollz/progressbar) - Progress bars
+- [promptui](https://github.com/manifoldco/promptui) - Interactive prompts
+- [progressbar](https://github.com/schollz/progressbar) - Progress bars
 
 ## 📞 Support
 
-- 📧 Email: votre-email@example.com
 - 🐛 Issues: [GitHub Issues](https://github.com/andydefer/crypto-aes-gcm/issues)
 - 📖 Documentation: [GoDoc](https://godoc.org/github.com/andydefer/crypto-aes-gcm)
-
-## 📈 Roadmap
-
-- [ ] Support du chiffrement asymétrique (age)
-- [ ] Compression automatique avant chiffrement
-- [ ] Mode archive (multiple fichiers)
-- [ ] Interface TUI avec BubbleTea
-- [ ] Support YubiKey/PIV
-- [ ] Déchiffrement parallèle
 
 ---
 
 **Made with 🔐 by andydefer**
 
-*Version 2.0.0 - Interface CLI moderne avec Cobra*
-
+*Version 2.0.0 - Mode interactif + Streaming pur + Authentification par chunk*

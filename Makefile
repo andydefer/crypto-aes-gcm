@@ -287,6 +287,65 @@ build-all:
 	@ls -lh build/cryptool-* 2>/dev/null || true
 
 # ---------------------------------------------------
+# Run Commands (Direct execution without building)
+# ---------------------------------------------------
+
+.PHONY: run
+run:
+	@echo "🚀 Running cryptool directly..."
+	@go run ./cmd/cryptool $(ARGS)
+
+.PHONY: run-encrypt
+run-encrypt:
+	@echo "🔒 Running encryption..."
+	@if [ -z "$(INPUT)" ]; then \
+		echo "❌ Error: INPUT variable is required"; \
+		echo "Usage: make run-encrypt INPUT=file.txt OUTPUT=file.enc PASS=password"; \
+		exit 1; \
+	fi
+	@if [ -z "$(OUTPUT)" ]; then \
+		echo "❌ Error: OUTPUT variable is required"; \
+		echo "Usage: make run-encrypt INPUT=file.txt OUTPUT=file.enc PASS=password"; \
+		exit 1; \
+	fi
+	@if [ -z "$(PASS)" ]; then \
+		echo "❌ Error: PASS variable is required"; \
+		echo "Usage: make run-encrypt INPUT=file.txt OUTPUT=file.enc PASS=password"; \
+		exit 1; \
+	fi
+	@go run ./cmd/cryptool encrypt $(INPUT) $(OUTPUT) --pass $(PASS) $(WORKERS) $(FORCE) $(QUIET)
+
+.PHONY: run-decrypt
+run-decrypt:
+	@echo "🔓 Running decryption..."
+	@if [ -z "$(INPUT)" ]; then \
+		echo "❌ Error: INPUT variable is required"; \
+		echo "Usage: make run-decrypt INPUT=file.enc OUTPUT=file.txt PASS=password"; \
+		exit 1; \
+	fi
+	@if [ -z "$(OUTPUT)" ]; then \
+		echo "❌ Error: OUTPUT variable is required"; \
+		echo "Usage: make run-decrypt INPUT=file.enc OUTPUT=file.txt PASS=password"; \
+		exit 1; \
+	fi
+	@if [ -z "$(PASS)" ]; then \
+		echo "❌ Error: PASS variable is required"; \
+		echo "Usage: make run-decrypt INPUT=file.enc OUTPUT=file.txt PASS=password"; \
+		exit 1; \
+	fi
+	@go run ./cmd/cryptool decrypt $(INPUT) $(OUTPUT) --pass $(PASS) $(WORKERS) $(FORCE) $(QUIET)
+
+.PHONY: run-interact
+run-interact:
+	@echo "🎮 Running interactive mode..."
+	@go run ./cmd/cryptool interact
+
+.PHONY: run-version
+run-version:
+	@echo "📦 Showing version..."
+	@go run ./cmd/cryptool version
+
+# ---------------------------------------------------
 # Test Commands
 # ---------------------------------------------------
 
@@ -307,7 +366,6 @@ test-coverage:
 	@go test -coverprofile=coverage.out ./...
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "✅ Coverage report: coverage.html"
-
 
 .PHONY: gotestsum
 gotestsum:
@@ -395,54 +453,68 @@ clean-all-tests: clean-test-data
 
 .PHONY: help
 help:
-	@echo "📚 Available commands:"
+	@echo "📚 CRYPTOOL - Available commands"
 	@echo ""
-	@echo "🚀 Version Control:"
-	@echo "  git-commit-push       Commit and push all changes"
-	@echo "  git-tag               Create and push a new version tag"
-	@echo "  generate-ai-diff      Generate clean diff for AI review (saved in private/diff/)"
-	@echo "  list-diffs            List all generated diff files"
-	@echo "  git-tag-republish     Force push the last tag"
+	@echo "🚀 RUN (Direct execution without building)"
+	@echo "  make run-interact              Run interactive mode (prompts for all inputs)"
+	@echo "  make run-version               Show version information"
+	@echo "  make run ARGS=\"...\"            Run with custom arguments"
+	@echo "  make run-encrypt INPUT=x OUTPUT=y PASS=z   Encrypt a file"
+	@echo "  make run-decrypt INPUT=x OUTPUT=y PASS=z   Decrypt a file"
 	@echo ""
-	@echo "📁 File Management:"
-	@echo "  concat-all            Concatenate all TEXT files (saved in private/concat-all/)"
-	@echo "  list-concats          List all concatenated files"
-	@echo "  clean                 Remove temporary files"
-	@echo "  clean-private         Remove private directory"
-	@echo "  clean-all             Remove all generated files including binaries"
+	@echo "  Examples:"
+	@echo "    make run-interact"
+	@echo "    make run-encrypt INPUT=secret.txt OUTPUT=secret.enc PASS=myPassword"
+	@echo "    make run-encrypt INPUT=video.mp4 OUTPUT=video.enc PASS=secret WORKERS=\"--workers 8\""
+	@echo "    make run-decrypt INPUT=secret.enc OUTPUT=decrypted.txt PASS=myPassword"
+	@echo "    make run ARGS=\"encrypt test.txt test.enc --pass mypassword --force\""
 	@echo ""
-	@echo "🔨 Build:"
-	@echo "  build                 Build cryptool for current platform"
-	@echo "  build-all             Build cryptool for all platforms (Linux, Windows, macOS)"
+	@echo "🔨 BUILD"
+	@echo "  make build                     Build cryptool for current platform"
+	@echo "  make build-all                 Build cryptool for all platforms (Linux, Windows, macOS)"
 	@echo ""
-	@echo "🧪 Go Tests:"
-	@echo "  test                  Run all Go tests"
-	@echo "  test-short            Run short Go tests"
-	@echo "  test-coverage         Run Go tests with coverage report"
-	@echo "  gotestsum             Run tests with gotestsum formatter"
+	@echo "🧪 GO TESTS"
+	@echo "  make test                      Run all Go tests"
+	@echo "  make test-short                Run short Go tests"
+	@echo "  make test-coverage             Run Go tests with coverage report"
+	@echo "  make gotestsum                 Run tests with gotestsum formatter"
 	@echo ""
-	@echo "📋 Test Scripts (Realistic):"
-	@echo "  test-scripts          Run realistic test scripts"
-	@echo "  test-scripts-short    Run realistic test scripts (short mode)"
-	@echo "  test-scenarios        Run advanced test scenarios"
-	@echo "  test-scenarios-short  Run advanced test scenarios (short mode)"
-	@echo "  test-scenarios-verbose Run advanced test scenarios (verbose mode)"
-	@echo "  test-all              Run all test scripts and scenarios"
-	@echo "  test-all-short        Run all tests in short mode"
+	@echo "📋 REALISTIC TEST SCRIPTS"
+	@echo "  make test-scripts              Run realistic test scripts"
+	@echo "  make test-scripts-short        Run realistic test scripts (short mode)"
+	@echo "  make test-scenarios            Run advanced test scenarios"
+	@echo "  make test-scenarios-short      Run advanced test scenarios (short mode)"
+	@echo "  make test-scenarios-verbose    Run advanced test scenarios (verbose mode)"
+	@echo "  make test-all                  Run all test scripts and scenarios"
+	@echo "  make test-all-short            Run all tests in short mode"
 	@echo ""
-	@echo "📁 Test Files Generation:"
-	@echo "  generate-test-files       Generate test files (including 50MB+ files)"
-	@echo "  generate-test-files-short Generate test files (short mode, no large files)"
+	@echo "📁 TEST FILES GENERATION"
+	@echo "  make generate-test-files       Generate test files (including 50MB+ files)"
+	@echo "  make generate-test-files-short Generate test files (short mode, no large files)"
 	@echo ""
-	@echo "🧹 Test Cleanup:"
-	@echo "  clean-test-data       Clean test data only"
-	@echo "  clean-all-tests       Clean all test artifacts"
+	@echo "🧹 CLEANUP"
+	@echo "  make clean                     Remove temporary files"
+	@echo "  make clean-test-data           Clean test data only"
+	@echo "  make clean-all-tests           Clean all test artifacts"
+	@echo "  make clean-private             Remove private directory"
+	@echo "  make clean-all                 Remove all generated files including binaries"
 	@echo ""
-	@echo "🔄 Release Management:"
-	@echo "  release               Create new release (includes pre-release)"
+	@echo "📁 FILE MANAGEMENT"
+	@echo "  make concat-all                Concatenate all TEXT files (saved in private/concat-all/)"
+	@echo "  make list-concats              List all concatenated files"
 	@echo ""
-	@echo "❓ Help:"
-	@echo "  help                  Display this help message"
+	@echo "🚀 VERSION CONTROL"
+	@echo "  make git-commit-push           Commit and push all changes"
+	@echo "  make git-tag                   Create and push a new version tag"
+	@echo "  make generate-ai-diff          Generate clean diff for AI review (saved in private/diff/)"
+	@echo "  make list-diffs                List all generated diff files"
+	@echo "  make git-tag-republish         Force push the last tag"
+	@echo ""
+	@echo "🔄 RELEASE MANAGEMENT"
+	@echo "  make release                   Create new release"
+	@echo ""
+	@echo "❓ HELP"
+	@echo "  make help                      Display this help message"
 
 # ---------------------------------------------------
 # Default Target

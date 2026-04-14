@@ -257,14 +257,18 @@ test_wrong_password() {
 
     # Tentative de décryption avec mauvais mot de passe
     local decrypted="$TEST_DIR/decrypted/wrong_pass.txt"
-    "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$wrong_password" --force --quiet 2>/dev/null
 
-    if [ $? -eq 0 ]; then
-        print_error "ERREUR: Décryption a réussi avec mauvais mot de passe!"
-        return 1
-    else
+    # NE PAS rediriger stderr pour voir l'erreur
+    # NE PAS utiliser --force (inutile pour la décryption)
+    "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$wrong_password" 2>&1 | grep -q "authentication failed"
+    local exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
         print_success "Décryption a échoué (comme attendu)"
         return 0
+    else
+        print_error "ERREUR: La décryption aurait dû échouer avec mauvais mot de passe!"
+        return 1
     fi
 }
 
@@ -468,19 +472,24 @@ test_corruption_detection() {
     local corrupted="$TEST_DIR/encrypted/corrupted.enc"
     cp "$encrypted" "$corrupted"
 
-    # Corrompre un byte au milieu du fichier
+    # Corrompre un byte dans le ciphertext (après le header)
+    # Header: Magic(4) + Version(1) + Salt(16) + ChunkSize(4) + HMAC(32) + Nonce(12) = 69 bytes
+    # On corrompt à l'offset 100 (dans le premier chunk)
     dd if=/dev/zero of="$corrupted" bs=1 count=1 seek=100 conv=notrunc 2>/dev/null
 
-    # Tentative de décryption
+    # Tentative de décryption - doit échouer car GCM détecte la corruption
     local decrypted="$TEST_DIR/decrypted/corrupted.txt"
-    "$CRYPTOOL_BIN" decrypt "$corrupted" "$decrypted" --pass "$password" --force --quiet 2>/dev/null
 
-    if [ $? -eq 0 ]; then
-        print_error "ERREUR: Décryption a réussi malgré la corruption!"
-        return 1
-    else
+    # Laisser stderr pour voir l'erreur GCM
+    "$CRYPTOOL_BIN" decrypt "$corrupted" "$decrypted" --pass "$password" 2>&1 | grep -q "decryption failed"
+    local exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
         print_success "Corruption détectée (décryption échouée)"
         return 0
+    else
+        print_error "ERREUR: Décryption a réussi malgré la corruption!"
+        return 1
     fi
 }
 

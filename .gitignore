@@ -106,6 +106,8 @@ block.pprof
 *.crt
 *.priv
 *.secret
+secret*
+log*
 secrets/
 credentials.json
 

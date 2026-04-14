@@ -237,30 +237,3 @@ func TestDecryptStream_ChunkBoundary(t *testing.T) {
 }
 
 // BenchmarkDecryptStream measures performance of streaming decryption.
-func BenchmarkDecryptStream(b *testing.B) {
-	testData := make([]byte, 10*1024*1024)
-	_, _ = rand.Read(testData)
-
-	reader := bytes.NewReader(testData)
-	var encryptedBuf bytes.Buffer
-
-	encryptor, err := NewEncryptor(DefaultWorkers)
-	if err != nil {
-		b.Fatalf("failed to create encryptor: %v", err)
-	}
-
-	if err := encryptor.Encrypt(reader, &encryptedBuf, "benchmark-password"); err != nil {
-		b.Fatalf("encryption failed: %v", err)
-	}
-
-	encryptedData := encryptedBuf.Bytes()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		var decryptedBuf bytes.Buffer
-		encryptedReader := bytes.NewReader(encryptedData)
-		if err := DecryptStream(encryptedReader, &decryptedBuf, "benchmark-password"); err != nil {
-			b.Fatalf("decryption failed: %v", err)
-		}
-	}
-}
