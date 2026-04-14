@@ -38,7 +38,7 @@ func BenchmarkEncrypt(b *testing.B) {
 			_, _ = rand.Read(data)
 			reader := bytes.NewReader(data)
 
-			encryptor, err := NewEncryptor(DefaultWorkers)
+			encryptor, err := NewEncryptor(DefaultWorkers())
 			if err != nil {
 				b.Fatalf("failed to create encryptor: %v", err)
 			}
@@ -70,7 +70,7 @@ func BenchmarkDecrypt(b *testing.B) {
 
 			// Pre-encrypt data once
 			var encryptedBuf bytes.Buffer
-			encryptor, err := NewEncryptor(DefaultWorkers)
+			encryptor, err := NewEncryptor(DefaultWorkers())
 			if err != nil {
 				b.Fatalf("failed to create encryptor: %v", err)
 			}

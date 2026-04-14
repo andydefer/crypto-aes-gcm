@@ -15,6 +15,7 @@ import (
 	"github.com/andydefer/crypto-aes-gcm/internal/argon2"
 	"github.com/andydefer/crypto-aes-gcm/internal/crypto"
 	"github.com/andydefer/crypto-aes-gcm/internal/header"
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 )
 
 // DecryptStream decrypts data from reader and writes plaintext to writer.
@@ -59,7 +60,7 @@ func DecryptStream(reader io.Reader, writer io.Writer, passphrase string) error 
 func readAndValidateHeader(reader io.Reader, passphrase string) (FileHeader, []byte, []byte, error) {
 	var headerData FileHeader
 	if err := binary.Read(reader, binary.BigEndian, &headerData); err != nil {
-		return FileHeader{}, nil, nil, fmt.Errorf("read header: %w", err)
+		return FileHeader{}, nil, nil, fmt.Errorf(lang.T(lang.CryptolibErrReadHeaderStream), err)
 	}
 
 	if string(headerData.Magic[:]) != Magic {
@@ -72,7 +73,7 @@ func readAndValidateHeader(reader io.Reader, passphrase string) (FileHeader, []b
 
 	storedHMAC := make([]byte, 32)
 	if _, err := io.ReadFull(reader, storedHMAC); err != nil {
-		return FileHeader{}, nil, nil, fmt.Errorf("read header HMAC: %w", err)
+		return FileHeader{}, nil, nil, fmt.Errorf(lang.T(lang.CryptolibErrReadHeaderHMACStream), err)
 	}
 
 	params := argon2.DefaultParams()
@@ -91,7 +92,7 @@ func readAndValidateHeader(reader io.Reader, passphrase string) (FileHeader, []b
 
 	baseNonce := make([]byte, NonceSize)
 	if _, err := io.ReadFull(reader, baseNonce); err != nil {
-		return FileHeader{}, nil, nil, fmt.Errorf("read nonce: %w", err)
+		return FileHeader{}, nil, nil, fmt.Errorf(lang.T(lang.CryptolibErrReadNonceStream), err)
 	}
 
 	return headerData, key, baseNonce, nil
@@ -108,12 +109,12 @@ func readAndValidateHeader(reader io.Reader, passphrase string) (FileHeader, []b
 func createGCMCipher(key []byte) (cipher.AEAD, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("create cipher: %w", err)
+		return nil, fmt.Errorf(lang.T(lang.CryptolibErrCreateCipherStream), err)
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, fmt.Errorf("create GCM: %w", err)
+		return nil, fmt.Errorf(lang.T(lang.CryptolibErrCreateGCMStream), err)
 	}
 
 	return gcm, nil
@@ -145,10 +146,10 @@ func decryptChunks(reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonc
 		err := binary.Read(reader, binary.BigEndian, &chunkLen)
 
 		if errors.Is(err, io.EOF) {
-			return fmt.Errorf("unexpected EOF: missing end marker")
+			return errors.New(lang.T(lang.CryptolibErrUnexpectedEOFStream))
 		}
 		if err != nil {
-			return fmt.Errorf("read chunk length: %w", err)
+			return fmt.Errorf(lang.T(lang.CryptolibErrReadChunkLenStream), err)
 		}
 
 		if chunkLen == 0 {
@@ -157,11 +158,11 @@ func decryptChunks(reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonc
 
 		ciphertext := make([]byte, chunkLen)
 		if _, err := io.ReadFull(reader, ciphertext); err != nil {
-			return fmt.Errorf("read ciphertext chunk %d: %w", chunkIndex, err)
+			return fmt.Errorf(lang.T(lang.CryptolibErrReadCiphertextStream), chunkIndex, err)
 		}
 
 		if err := crypto.DeriveChunkNonceFast(nonceBuf[:], baseNonce, chunkIndex); err != nil {
-			return fmt.Errorf("derive nonce for chunk %d: %w", chunkIndex, err)
+			return fmt.Errorf(lang.T(lang.CryptolibErrDeriveNonceStream), chunkIndex, err)
 		}
 
 		plaintext, err := gcm.Open(nil, nonceBuf[:], ciphertext, nil)
@@ -170,7 +171,7 @@ func decryptChunks(reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonc
 		}
 
 		if _, err := writer.Write(plaintext); err != nil {
-			return fmt.Errorf("write plaintext chunk %d: %w", chunkIndex, err)
+			return fmt.Errorf(lang.T(lang.CryptolibErrWritePlaintextStream), chunkIndex, err)
 		}
 
 		chunkIndex++

@@ -24,10 +24,10 @@ func TestValidateWorkerCount(t *testing.T) {
 		quiet     bool
 		expected  int
 	}{
-		{"zero workers", 0, true, cryptolib.DefaultWorkers},
-		{"negative workers", -5, true, cryptolib.DefaultWorkers},
+		{"zero workers", 0, true, cryptolib.DefaultWorkers()},
+		{"negative workers", -5, true, cryptolib.DefaultWorkers()},
 		{"valid workers", 4, true, 4},
-		{"zero workers non-quiet", 0, false, cryptolib.DefaultWorkers},
+		{"zero workers non-quiet", 0, false, cryptolib.DefaultWorkers()},
 		{"valid workers non-quiet", 4, false, 4},
 	}
 
@@ -116,7 +116,7 @@ func TestValidateWorkerCountEdgeCases(t *testing.T) {
 		expected  int
 	}{
 		{"max workers", 1000, true, 16}, // Assuming 8 CPUs -> max 16
-		{"exactly default", cryptolib.DefaultWorkers, true, cryptolib.DefaultWorkers},
+		{"exactly default", cryptolib.DefaultWorkers(), true, cryptolib.DefaultWorkers()},
 		{"one worker", 1, true, 1},
 	}
 
@@ -174,10 +174,10 @@ func TestValidateWorkerCountEdgeCasesWithConfig(t *testing.T) {
 		requested int
 		expected  int
 	}{
-		{"zero workers", 0, cryptolib.DefaultWorkers},
-		{"negative workers", -1, cryptolib.DefaultWorkers},
+		{"zero workers", 0, cryptolib.DefaultWorkers()},
+		{"negative workers", -1, cryptolib.DefaultWorkers()},
 		{"one worker", 1, 1},
-		{"default workers", cryptolib.DefaultWorkers, cryptolib.DefaultWorkers},
+		{"default workers", cryptolib.DefaultWorkers(), cryptolib.DefaultWorkers()},
 	}
 
 	for _, tt := range tests {

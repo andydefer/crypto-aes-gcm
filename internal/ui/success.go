@@ -13,6 +13,7 @@ package ui
 import (
 	"fmt"
 
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 	"github.com/andydefer/crypto-aes-gcm/internal/utils"
 )
 
@@ -31,8 +32,8 @@ import (
 //   - size: Size of the output file in bytes
 func PrintSuccess(output string, size int64) {
 	fmt.Println()
-	SuccessColor.Printf("✅ Operation successful!\n")
-	InfoColor.Printf("📄 Output: %s\n", output)
-	InfoColor.Printf("📏 Size:   %s\n", utils.FormatFileSize(size))
+	SuccessColor.Println(lang.T(lang.UISuccessOperation))
+	InfoColor.Printf(lang.T(lang.UISuccessOutput), output)
+	InfoColor.Printf(lang.T(lang.UISuccessSize), utils.FormatFileSize(size))
 	fmt.Println()
 }

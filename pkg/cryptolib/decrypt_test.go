@@ -26,7 +26,7 @@ func TestDecryptor_CorruptedFile(t *testing.T) {
 
 	encryptedFile := filepath.Join(t.TempDir(), "encrypted.bin")
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestDecryptor_EmptyFile(t *testing.T) {
 
 	encryptedFile := filepath.Join(t.TempDir(), "encrypted.bin")
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestDecryptor_StreamingMemory(t *testing.T) {
 
 	encryptedFile := filepath.Join(t.TempDir(), "encrypted.bin")
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}

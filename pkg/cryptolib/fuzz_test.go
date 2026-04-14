@@ -41,7 +41,7 @@ func FuzzEncryptDecrypt(f *testing.F) {
 	f.Fuzz(func(t *testing.T, original []byte) {
 		password := "fuzz-test-password-123"
 
-		encryptor, err := NewEncryptor(DefaultWorkers)
+		encryptor, err := NewEncryptor(DefaultWorkers())
 		if err != nil {
 			t.Fatalf("failed to create encryptor: %v", err)
 		}
@@ -79,7 +79,7 @@ func FuzzDecryptCorrupted(f *testing.F) {
 	original := []byte("test data for corruption fuzzing")
 	password := "corruption-test-password"
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		f.Fatalf("failed to create encryptor: %v", err)
 	}

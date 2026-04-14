@@ -2,11 +2,13 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"syscall"
 
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 	"golang.org/x/term"
 )
 
@@ -40,17 +42,17 @@ func ResolvePassword(flagPass string, needConfirmation bool) (string, error) {
 //   - string: The entered password (trimmed)
 //   - error: If password reading fails or password is empty
 func promptPassword() (string, error) {
-	fmt.Print("🔑 Password: ")
+	fmt.Print(lang.T(lang.PasswordPrompt))
 	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
-		return "", fmt.Errorf("read password: %w", err)
+		return "", fmt.Errorf("%s: %w", lang.T(lang.PasswordReadError), err)
 	}
 	fmt.Println()
 
 	password := strings.TrimSpace(string(bytePassword))
 
 	if password == "" {
-		return "", fmt.Errorf("password cannot be empty")
+		return "", errors.New(lang.T(lang.PasswordEmpty))
 	}
 
 	return password, nil
@@ -62,10 +64,10 @@ func promptPassword() (string, error) {
 //   - string: The confirmed password (trimmed)
 //   - error: If password reading fails, validation fails, or passwords don't match
 func promptPasswordWithConfirm() (string, error) {
-	fmt.Print("🔑 Password: ")
+	fmt.Print(lang.T(lang.PasswordPrompt))
 	bytePassword1, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
-		return "", fmt.Errorf("read password: %w", err)
+		return "", fmt.Errorf("%s: %w", lang.T(lang.PasswordReadError), err)
 	}
 	fmt.Println()
 
@@ -75,17 +77,17 @@ func promptPasswordWithConfirm() (string, error) {
 		return "", err
 	}
 
-	fmt.Print("✅ Confirm password: ")
+	fmt.Print(lang.T(lang.PasswordConfirmPrompt))
 	bytePassword2, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
-		return "", fmt.Errorf("read confirmation: %w", err)
+		return "", fmt.Errorf("%s: %w", lang.T(lang.PasswordConfirmError), err)
 	}
 	fmt.Println()
 
 	password2 := strings.TrimSpace(string(bytePassword2))
 
 	if password1 != password2 {
-		return "", fmt.Errorf("passwords do not match")
+		return "", errors.New(lang.T(lang.PasswordNotMatch))
 	}
 
 	return password1, nil
@@ -102,16 +104,16 @@ func promptPasswordWithConfirm() (string, error) {
 // Returns an error with a descriptive message if any requirement is not met.
 func validatePasswordStrength(password string) error {
 	if len(password) < 8 {
-		return fmt.Errorf("minimum 8 characters required")
+		return errors.New(lang.T(lang.PasswordMinLength))
 	}
 	if !regexp.MustCompile(`[A-Z]`).MatchString(password) {
-		return fmt.Errorf("at least one uppercase letter required")
+		return errors.New(lang.T(lang.PasswordUppercase))
 	}
 	if !regexp.MustCompile(`[a-z]`).MatchString(password) {
-		return fmt.Errorf("at least one lowercase letter required")
+		return errors.New(lang.T(lang.PasswordLowercase))
 	}
 	if !regexp.MustCompile(`[0-9]`).MatchString(password) {
-		return fmt.Errorf("at least one digit required")
+		return errors.New(lang.T(lang.PasswordDigit))
 	}
 	return nil
 }

@@ -1,4 +1,4 @@
-// Package ui provides terminal user interface components for aesaesaescryptool.
+// Package ui provides terminal user interface components for aescryptool.
 //
 // This package handles all user-facing output including:
 //   - Colored banners and headers for different operation modes
@@ -10,7 +10,11 @@
 // visually appealing terminal output across different platforms.
 package ui
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
+)
 
 // PrintInteractiveHeader displays the interactive mode welcome banner.
 //
@@ -24,18 +28,7 @@ import "fmt"
 func PrintInteractiveHeader() {
 	fmt.Println()
 	fmt.Println()
-	HeaderColor.Printf(`
-╔════════════════════════════════════════════════════════════════════╗
-║                                                                    ║
-║                 🎮 AESCRYPTOOL - MODE INTERACTIF                   ║
-║                                                                    ║
-║  Suivez les invites pour chiffrer ou déchiffrer vos fichiers       ║
-║  Toutes les entrées seront validées avant exécution                ║
-║                                                                    ║
-║  Ctrl+C = Retour au menu | Ctrl+D = Quitter                        ║
-║                                                                    ║
-╚════════════════════════════════════════════════════════════════════╝
-`)
+	HeaderColor.Println(lang.T(lang.UIInteractiveHeader))
 	fmt.Println()
 	fmt.Println()
 }
@@ -46,8 +39,8 @@ func PrintInteractiveHeader() {
 // It clearly indicates to the user that they are in the encryption workflow.
 func PrintEncryptHeader() {
 	fmt.Println()
-	InfoColor.Println("🔐 CHIFFREMENT DE FICHIER")
-	fmt.Println("────────────────────────────────────────")
+	InfoColor.Println(lang.T(lang.UIEncryptHeader))
+	InfoColor.Println(lang.T(lang.UIHeaderSeparator))
 	fmt.Println()
 }
 
@@ -57,8 +50,8 @@ func PrintEncryptHeader() {
 // It clearly indicates to the user that they are in the decryption workflow.
 func PrintDecryptHeader() {
 	fmt.Println()
-	InfoColor.Println("🔓 DÉCHIFFREMENT DE FICHIER")
-	fmt.Println("────────────────────────────────────────")
+	InfoColor.Println(lang.T(lang.UIDecryptHeader))
+	InfoColor.Println(lang.T(lang.UIHeaderSeparator))
 	fmt.Println()
 }
 
@@ -69,15 +62,7 @@ func PrintDecryptHeader() {
 func PrintInteractiveGoodbye() {
 	fmt.Println()
 	fmt.Println()
-	SuccessColor.Printf(`
-╔════════════════════════════════════════════════════════════════════╗
-║                                                                    ║
-║              👋 Merci d'avoir utilisé AESCRYPTOOL !                ║
-║                                                                    ║
-║              À bientôt pour vos prochains chiffrements !           ║
-║                                                                    ║
-╚════════════════════════════════════════════════════════════════════╝
-`)
+	SuccessColor.Println(lang.T(lang.UIGoodbyeMessage))
 	fmt.Println()
 	fmt.Println()
 }

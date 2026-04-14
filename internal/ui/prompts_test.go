@@ -50,16 +50,21 @@ func TestPromptConfirmLogic(t *testing.T) {
 		{"whitespace n", "  n  ", true, false},
 	}
 
+	var truthyValues = map[string]bool{
+		"y": true, "yes": true, "o": true, "oui": true,
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := strings.TrimSpace(strings.ToLower(tt.input))
 
 			var actual bool
-			if result == "" {
+			switch {
+			case result == "":
 				actual = tt.defaultValue
-			} else if result == "y" || result == "yes" || result == "o" || result == "oui" {
+			case truthyValues[result]:
 				actual = true
-			} else {
+			default:
 				actual = false
 			}
 

@@ -21,7 +21,7 @@ func TestDecryptStream(t *testing.T) {
 	reader := bytes.NewReader(originalData)
 	var encryptedBuf bytes.Buffer
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestDecryptStream_EmptyFile(t *testing.T) {
 	reader := bytes.NewReader(originalData)
 	var encryptedBuf bytes.Buffer
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestDecryptStream_WrongPassword(t *testing.T) {
 	reader := bytes.NewReader(originalData)
 	var encryptedBuf bytes.Buffer
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestDecryptStream_CorruptedData(t *testing.T) {
 	reader := bytes.NewReader(originalData)
 	var encryptedBuf bytes.Buffer
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestDecryptStream_LargeData(t *testing.T) {
 	reader := bytes.NewReader(testData)
 	var encryptedBuf bytes.Buffer
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}
@@ -171,7 +171,7 @@ func TestDecryptStream_FileInterface(t *testing.T) {
 
 	encryptedFile := filepath.Join(t.TempDir(), "encrypted.bin")
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}
@@ -219,7 +219,7 @@ func TestDecryptStream_ChunkBoundary(t *testing.T) {
 	reader := bytes.NewReader(testData)
 	var encryptedBuf bytes.Buffer
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}

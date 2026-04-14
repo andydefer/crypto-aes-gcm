@@ -23,6 +23,7 @@ import (
 	"github.com/andydefer/crypto-aes-gcm/internal/argon2"
 	"github.com/andydefer/crypto-aes-gcm/internal/crypto"
 	"github.com/andydefer/crypto-aes-gcm/internal/header"
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 )
 
 // Decryptor handles decryption of data encrypted with Encryptor.
@@ -66,13 +67,13 @@ func NewDecryptor(passphrase string, salt []byte) (*Decryptor, error) {
 func (d *Decryptor) DecryptFile(inputPath, outputPath string) error {
 	input, err := os.Open(inputPath)
 	if err != nil {
-		return fmt.Errorf("open input: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrOpenInput), err)
 	}
 	defer input.Close()
 
 	output, err := os.Create(outputPath)
 	if err != nil {
-		return fmt.Errorf("create output: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrCreateOutput), err)
 	}
 	defer output.Close()
 
@@ -100,12 +101,12 @@ func (d *Decryptor) Decrypt(reader io.Reader, writer io.Writer) error {
 
 	block, err := aes.NewCipher(d.key)
 	if err != nil {
-		return fmt.Errorf("create cipher: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrCreateCipher), err)
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return fmt.Errorf("create GCM: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrCreateGCM), err)
 	}
 
 	return d.processDecryption(reader, writer, gcm, baseNonce)
@@ -125,7 +126,7 @@ func (d *Decryptor) Decrypt(reader io.Reader, writer io.Writer) error {
 func (d *Decryptor) readAndVerifyHeader(reader io.Reader) (FileHeader, []byte, error) {
 	var headerData FileHeader
 	if err := binary.Read(reader, binary.BigEndian, &headerData); err != nil {
-		return FileHeader{}, nil, fmt.Errorf("read header: %w", err)
+		return FileHeader{}, nil, fmt.Errorf(lang.T(lang.CryptolibErrReadHeader), err)
 	}
 
 	if string(headerData.Magic[:]) != Magic {
@@ -138,7 +139,7 @@ func (d *Decryptor) readAndVerifyHeader(reader io.Reader) (FileHeader, []byte, e
 
 	storedHMAC := make([]byte, 32)
 	if _, err := io.ReadFull(reader, storedHMAC); err != nil {
-		return FileHeader{}, nil, fmt.Errorf("read header HMAC: %w", err)
+		return FileHeader{}, nil, fmt.Errorf(lang.T(lang.CryptolibErrReadHeaderHMAC), err)
 	}
 
 	serialized := header.Serialize(
@@ -154,7 +155,7 @@ func (d *Decryptor) readAndVerifyHeader(reader io.Reader) (FileHeader, []byte, e
 
 	baseNonce := make([]byte, NonceSize)
 	if _, err := io.ReadFull(reader, baseNonce); err != nil {
-		return FileHeader{}, nil, fmt.Errorf("read nonce: %w", err)
+		return FileHeader{}, nil, fmt.Errorf(lang.T(lang.CryptolibErrReadNonce), err)
 	}
 
 	return headerData, baseNonce, nil
@@ -184,10 +185,10 @@ func (d *Decryptor) processDecryption(reader io.Reader, writer io.Writer, gcm ci
 		err := binary.Read(reader, binary.BigEndian, &chunkLen)
 
 		if errors.Is(err, io.EOF) {
-			return fmt.Errorf("unexpected EOF: missing end marker")
+			return errors.New(lang.T(lang.CryptolibErrUnexpectedEOF))
 		}
 		if err != nil {
-			return fmt.Errorf("read chunk length: %w", err)
+			return fmt.Errorf(lang.T(lang.CryptolibErrReadChunkLen), err)
 		}
 
 		if chunkLen == 0 {
@@ -196,11 +197,11 @@ func (d *Decryptor) processDecryption(reader io.Reader, writer io.Writer, gcm ci
 
 		ciphertext := make([]byte, chunkLen)
 		if _, err := io.ReadFull(reader, ciphertext); err != nil {
-			return fmt.Errorf("read ciphertext chunk %d: %w", chunkIndex, err)
+			return fmt.Errorf(lang.T(lang.CryptolibErrReadCiphertext), chunkIndex, err)
 		}
 
 		if err := crypto.DeriveChunkNonceFast(nonceBuf[:], baseNonce, chunkIndex); err != nil {
-			return fmt.Errorf("derive nonce for chunk %d: %w", chunkIndex, err)
+			return fmt.Errorf(lang.T(lang.CryptolibErrDeriveNonce), chunkIndex, err)
 		}
 
 		plaintext, err := gcm.Open(nil, nonceBuf[:], ciphertext, nil)
@@ -209,7 +210,7 @@ func (d *Decryptor) processDecryption(reader io.Reader, writer io.Writer, gcm ci
 		}
 
 		if _, err := writer.Write(plaintext); err != nil {
-			return fmt.Errorf("write plaintext chunk %d: %w", chunkIndex, err)
+			return fmt.Errorf(lang.T(lang.CryptolibErrWritePlaintext), chunkIndex, err)
 		}
 
 		chunkIndex++

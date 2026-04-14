@@ -20,6 +20,7 @@ import (
 	"github.com/andydefer/crypto-aes-gcm/internal/argon2"
 	"github.com/andydefer/crypto-aes-gcm/internal/crypto"
 	"github.com/andydefer/crypto-aes-gcm/internal/header"
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 )
 
 // Encryptor handles parallel streaming encryption of data.
@@ -117,15 +118,15 @@ func (e *Encryptor) EncryptFile(inputPath, outputPath, passphrase string) error 
 func (e *Encryptor) EncryptFileWithContext(ctx context.Context, inputPath, outputPath, passphrase string) (err error) {
 	input, err := os.Open(inputPath)
 	if err != nil {
-		return fmt.Errorf("open input: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrOpenInputEnc), err)
 	}
-	defer closeWithErrorHandler(input, &err, "close input")
+	defer closeWithErrorHandler(input, &err, lang.T(lang.CryptolibErrCloseInput))
 
 	output, err := os.Create(outputPath)
 	if err != nil {
-		return fmt.Errorf("create output: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrCreateOutputEnc), err)
 	}
-	defer closeWithErrorHandler(output, &err, "close output")
+	defer closeWithErrorHandler(output, &err, lang.T(lang.CryptolibErrCloseOutput))
 
 	return e.EncryptWithContext(ctx, input, output, passphrase)
 }
@@ -156,7 +157,7 @@ func (e *Encryptor) Encrypt(reader io.Reader, writer io.Writer, passphrase strin
 func (e *Encryptor) EncryptWithContext(ctx context.Context, reader io.Reader, writer io.Writer, passphrase string) error {
 	var salt [SaltSize]byte
 	if _, err := rand.Read(salt[:]); err != nil {
-		return fmt.Errorf("generate salt: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrGenerateSalt), err)
 	}
 
 	key := argon2.DeriveKey(passphrase, salt[:], argon2.DefaultParams())
@@ -167,21 +168,21 @@ func (e *Encryptor) EncryptWithContext(ctx context.Context, reader io.Reader, wr
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return fmt.Errorf("create cipher: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrCreateCipherEnc), err)
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return fmt.Errorf("create GCM: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrCreateGCMEnc), err)
 	}
 
 	baseNonce := make([]byte, NonceSize)
 	if _, err := rand.Read(baseNonce); err != nil {
-		return fmt.Errorf("generate nonce: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrGenerateNonce), err)
 	}
 
 	if _, err := writer.Write(baseNonce); err != nil {
-		return fmt.Errorf("write nonce: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrWriteNonce), err)
 	}
 
 	return e.processEncryptionWithContext(ctx, reader, writer, gcm, baseNonce)
@@ -205,7 +206,7 @@ func (e *Encryptor) writeHeader(writer io.Writer, key []byte, salt [SaltSize]byt
 	}
 
 	if err := binary.Write(writer, binary.BigEndian, &headerData); err != nil {
-		return fmt.Errorf("write header: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrWriteHeader), err)
 	}
 
 	headerHMAC := header.ComputeHMAC(key, header.Serialize(
@@ -216,7 +217,7 @@ func (e *Encryptor) writeHeader(writer io.Writer, key []byte, salt [SaltSize]byt
 	))
 
 	if _, err := writer.Write(headerHMAC); err != nil {
-		return fmt.Errorf("write header HMAC: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrWriteHeaderHMAC), err)
 	}
 
 	return nil
@@ -275,7 +276,7 @@ func (e *Encryptor) processEncryptionWithContext(ctx context.Context, reader io.
 	}
 
 	if err := binary.Write(writer, binary.BigEndian, uint32(0)); err != nil {
-		return fmt.Errorf("write end marker: %w", err)
+		return fmt.Errorf(lang.T(lang.CryptolibErrWriteEndMarker), err)
 	}
 
 	return nil
@@ -308,7 +309,7 @@ func (e *Encryptor) encryptionWorker(ctx context.Context, gcm cipher.AEAD, baseN
 			if err := crypto.DeriveChunkNonceFast(nonceBuf[:], baseNonce, job.index); err != nil {
 				select {
 				case <-ctx.Done():
-				case errChan <- fmt.Errorf("nonce derivation failed: %w", err):
+				case errChan <- fmt.Errorf(lang.T(lang.CryptolibErrNonceDerivation), err):
 				}
 				return
 			}
@@ -374,7 +375,7 @@ func (e *Encryptor) readChunks(ctx context.Context, reader io.Reader, jobs chan<
 
 		if err != nil {
 			e.bufferPool.Put(bufferPtr)
-			return fmt.Errorf("read chunk: %w", err)
+			return fmt.Errorf(lang.T(lang.CryptolibErrReadChunk), err)
 		}
 
 		select {
@@ -412,13 +413,13 @@ func (e *Encryptor) writeResultsWithContext(ctx context.Context, results <-chan 
 		case result, ok := <-results:
 			if !ok {
 				if len(pending) > 0 {
-					return fmt.Errorf("missing chunks: expected index %d, have %d pending", expectedIndex, len(pending))
+					return fmt.Errorf(lang.T(lang.CryptolibErrMissingChunks), expectedIndex, len(pending))
 				}
 				return nil
 			}
 
 			if len(pending) > e.maxPendingChunks {
-				return fmt.Errorf("too many pending chunks (limit %d) - possible reordering attack", e.maxPendingChunks)
+				return fmt.Errorf(lang.T(lang.CryptolibErrTooManyPending), e.maxPendingChunks)
 			}
 
 			pending[result.index] = result.ciphertext
@@ -431,11 +432,11 @@ func (e *Encryptor) writeResultsWithContext(ctx context.Context, results <-chan 
 
 				chunkLen := uint32(len(ciphertext))
 				if err := binary.Write(writer, binary.BigEndian, chunkLen); err != nil {
-					return fmt.Errorf("write chunk length: %w", err)
+					return fmt.Errorf(lang.T(lang.CryptolibErrWriteChunkLen), err)
 				}
 
 				if _, err := writer.Write(ciphertext); err != nil {
-					return fmt.Errorf("write ciphertext: %w", err)
+					return fmt.Errorf(lang.T(lang.CryptolibErrWriteCiphertext), err)
 				}
 
 				delete(pending, expectedIndex)
@@ -448,7 +449,7 @@ func (e *Encryptor) writeResultsWithContext(ctx context.Context, results <-chan 
 // clampWorkers ensures the worker count is within acceptable bounds.
 func clampWorkers(workers int) int {
 	if workers <= 0 {
-		workers = DefaultWorkers
+		workers = DefaultWorkers()
 	}
 	maxWorkers := runtime.NumCPU() * 2
 	if workers > maxWorkers {

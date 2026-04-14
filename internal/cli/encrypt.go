@@ -8,6 +8,7 @@ package cli
 import (
 	"fmt"
 
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 	"github.com/andydefer/crypto-aes-gcm/internal/service"
 	"github.com/andydefer/crypto-aes-gcm/internal/ui"
 	"github.com/andydefer/crypto-aes-gcm/pkg/cryptolib"
@@ -18,47 +19,30 @@ import (
 // NewEncryptCmd creates and configures the encrypt command.
 //
 // The command expects two positional arguments:
-//   - input: Path to the plaintext source file
-//   - output: Path where encrypted data will be written
+//   - input: path to the plaintext source file
+//   - output: path where encrypted data will be written
 //
 // Flags:
-//   - --pass, -p: Passphrase for encryption (optional - if omitted, prompts interactively)
-//   - --workers, -w: Number of parallel workers (default: cryptolib.DefaultWorkers)
-//   - --force, -f: Overwrite output file without confirmation
-//   - --quiet, -q: Suppress progress output
+//   - --pass, -p: passphrase for encryption (optional, prompts if omitted)
+//   - --workers, -w: number of parallel workers for chunk encryption
+//   - --force, -f: overwrite existing output file without confirmation
+//   - --quiet, -q: suppress progress bar output
 //
 // Returns:
-//   - *cobra.Command: Configured Cobra command ready for registration
+//   - *cobra.Command: configured Cobra command ready for registration
 func NewEncryptCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "encrypt [input] [output]",
-		Short: "🔒 Encrypt a file",
-		Long: `Encrypt a file using AES-256-GCM with Argon2id key derivation.
-
-The encryption process:
-  1. Generates a random salt and nonce
-  2. Derives a 256-bit key using Argon2id
-  3. Splits the input into chunks (default 1MB)
-  4. Encrypts chunks in parallel using the specified number of workers
-  5. Writes header, HMAC, nonce, and encrypted chunks to the output file
-
-Password can be provided via:
-  - --pass flag (visible in process list, not recommended for shared environments)
-  - Interactive prompt (recommended for manual use)
-
-Examples:
-  aescryptool encrypt secret.txt secret.enc              # Prompts for password
-  aescryptool encrypt secret.txt secret.enc --pass myPassword
-  aescryptool encrypt data.txt output.enc --pass secure123 --force
-  aescryptool encrypt large.bin result.enc --workers 8 --quiet`,
-		Args: cobra.ExactArgs(2),
-		RunE: runEncrypt,
+		Short: lang.T(lang.CmdEncryptShort),
+		Long:  lang.T(lang.CmdEncryptLong),
+		Args:  cobra.ExactArgs(2),
+		RunE:  runEncrypt,
 	}
 
-	cmd.Flags().StringVarP(&GlobalConfig.Pass, "pass", "p", "", "Passphrase for encryption (optional - will prompt if omitted)")
-	cmd.Flags().IntVarP(&GlobalConfig.Workers, "workers", "w", cryptolib.DefaultWorkers, "Number of parallel workers for chunk encryption")
-	cmd.Flags().BoolVarP(&GlobalConfig.Force, "force", "f", false, "Overwrite existing output file without confirmation")
-	cmd.Flags().BoolVarP(&GlobalConfig.Quiet, "quiet", "q", false, "Suppress progress bar output")
+	cmd.Flags().StringVarP(&GlobalConfig.Pass, "pass", "p", "", lang.T(lang.FlagPassDesc))
+	cmd.Flags().IntVarP(&GlobalConfig.Workers, "workers", "w", cryptolib.DefaultWorkers(), lang.T(lang.FlagWorkersDesc))
+	cmd.Flags().BoolVarP(&GlobalConfig.Force, "force", "f", false, lang.T(lang.FlagForceDesc))
+	cmd.Flags().BoolVarP(&GlobalConfig.Quiet, "quiet", "q", false, lang.T(lang.FlagQuietDesc))
 
 	return cmd
 }
@@ -66,58 +50,75 @@ Examples:
 // runEncrypt executes the encryption operation.
 //
 // It validates the input file, checks for output file conflicts, validates
-// the worker count, and delegates the actual encryption to the service layer.
-// On any error, it prints an error message and returns the error.
+// the worker count, resolves the password, and delegates encryption to the service layer.
 //
 // Parameters:
-//   - cmd: The Cobra command (provides stderr output)
-//   - args: Command arguments containing input and output file paths
+//   - cmd: the Cobra command (provides stderr output)
+//   - args: command arguments containing input and output file paths
 //
 // Returns:
-//   - error: Any error encountered during encryption, or nil on success
+//   - error: any error encountered during encryption, or nil on success
 func runEncrypt(cmd *cobra.Command, args []string) error {
+	applyLanguage(GlobalConfig.Lang)
+
 	input := args[0]
 	output := args[1]
 
 	workerCount := service.ValidateWorkerCount(GlobalConfig.Workers, GlobalConfig.Quiet)
 
-	// Validate input file exists
 	if err := service.ValidateInputFile(input); err != nil {
-		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
+		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), lang.T(lang.CliError), err)
 		return err
 	}
 
-	// Check for existing output file with interactive confirmation
-	err := service.CheckOverwrite(output, GlobalConfig.Force)
-	if err == service.ErrFileExists && !GlobalConfig.Force {
-		prompt := promptui.Prompt{
-			Label:     fmt.Sprintf("Fichier '%s' existe déjà. Écraser ?", output),
-			IsConfirm: true,
-			Default:   "n",
-		}
-		result, errPrompt := prompt.Run()
-		if errPrompt != nil || (result != "y" && result != "Y") {
-			ui.InfoColor.Println("❌ Opération annulée")
-			return nil
-		}
-	} else if err != nil && err != service.ErrFileExists {
-		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
+	if err := handleOutputOverwrite(output, cmd); err != nil {
 		return err
 	}
 
-	// Resolve password (prompt if not provided via flag)
-	// For encryption, needConfirmation=true to require password confirmation
 	password, err := ResolvePassword(GlobalConfig.Pass, true)
 	if err != nil {
-		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
+		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), lang.T(lang.CliError), err)
 		return err
 	}
 
-	// Execute encryption
 	if err := service.ExecuteEncryption(input, output, password, workerCount, GlobalConfig.Quiet); err != nil {
-		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
+		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), lang.T(lang.CliError), err)
 		return err
 	}
 
 	return nil
+}
+
+// handleOutputOverwrite checks if the output file exists and handles overwrite confirmation.
+//
+// Parameters:
+//   - output: path to the output file
+//   - cmd: the Cobra command for error output
+//
+// Returns:
+//   - error: if the operation is cancelled or an unexpected error occurs
+func handleOutputOverwrite(output string, cmd *cobra.Command) error {
+	err := service.CheckOverwrite(output, GlobalConfig.Force)
+
+	switch {
+	case err == service.ErrFileExists && !GlobalConfig.Force:
+		prompt := promptui.Prompt{
+			Label:     fmt.Sprintf(lang.T(lang.CliFileExists), output),
+			IsConfirm: true,
+			Default:   "n",
+		}
+		result, promptErr := prompt.Run()
+		if promptErr != nil || (result != "y" && result != "Y") {
+			ui.InfoColor.Println(lang.T(lang.CliOperationCancelled))
+			return nil // User cancelled, no error
+		}
+		return nil
+
+	case err != nil && err != service.ErrFileExists:
+		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), lang.T(lang.CliError), err)
+		return err
+
+	default:
+		return nil
+	}
 }

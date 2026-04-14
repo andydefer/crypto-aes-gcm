@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 	"github.com/andydefer/crypto-aes-gcm/internal/service"
 	"github.com/andydefer/crypto-aes-gcm/internal/ui"
 	"github.com/spf13/cobra"
@@ -15,17 +16,13 @@ import (
 
 // NewInteractCmd creates the interactive command.
 //
-// This command launches a user-friendly interactive shell that prompts for
-// all necessary inputs (file paths, passwords, options) with real-time
-// validation and visual feedback.
-//
 // Returns:
-//   - *cobra.Command: Configured Cobra command for interactive mode
+//   - *cobra.Command: configured interactive command
 func NewInteractCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "interact",
 		Short: "🎮 Interactive mode",
-		Long:  "Run aescryptool in interactive mode with guided prompts for all inputs",
+		Long:  lang.T(lang.CmdEncryptLong),
 		RunE:  runInteractive,
 	}
 }
@@ -33,16 +30,21 @@ func NewInteractCmd() *cobra.Command {
 // runInteractive is the main entry point for interactive mode.
 //
 // It displays the welcome header and enters a loop that repeatedly presents
-// the operation menu until the user chooses to exit or sends Ctrl+D.
+// the operation menu until the user chooses to exit.
+//
+// Parameters:
+//   - cmd: the Cobra command (unused, kept for interface compliance)
+//   - args: command arguments (unused)
 //
 // Returns:
-//   - error: nil always (interactive mode exits via normal flow)
+//   - error: always nil (interactive mode exits via normal flow)
 func runInteractive(cmd *cobra.Command, args []string) error {
+	applyLanguage(GlobalConfig.Lang)
+
 	ui.PrintInteractiveHeader()
 
 	for {
-		choice := ui.PromptOperation()
-		switch choice {
+		switch ui.PromptOperation() {
 		case "encrypt":
 			fmt.Println()
 			runInteractiveEncrypt()
@@ -61,12 +63,11 @@ func runInteractive(cmd *cobra.Command, args []string) error {
 // The flow:
 //  1. Prompt for source file path
 //  2. Prompt for output file path (defaults to input + ".enc")
-//  3. Prompt for password with strength validation
-//  4. Prompt for password confirmation
-//  5. Prompt for worker count (parallel processing)
-//  6. Check if output file exists and ask for overwrite confirmation
-//  7. Execute encryption with progress bar
-//  8. Wait for user to press Enter before returning to menu
+//  3. Prompt for password with strength validation and confirmation
+//  4. Prompt for worker count
+//  5. Check if output file exists and ask for overwrite confirmation
+//  6. Execute encryption with progress bar
+//  7. Wait for user to press Enter before returning to menu
 func runInteractiveEncrypt() {
 	ui.PrintEncryptHeader()
 
@@ -89,14 +90,14 @@ func runInteractiveEncrypt() {
 	fmt.Println()
 
 	if err := checkAndConfirmOverwrite(output); err != nil {
-		ui.ErrorColor.Printf("❌ Error: %v\n", err)
+		ui.ErrorColor.Printf(lang.T(lang.CliError), err)
 		fmt.Println()
 		waitForUser()
 		return
 	}
 
 	if err := service.ExecuteEncryption(input, output, password, workerCount, false); err != nil {
-		ui.ErrorColor.Printf("❌ Error: %v\n", err)
+		ui.ErrorColor.Printf(lang.T(lang.CliError), err)
 	}
 
 	fmt.Println()
@@ -115,7 +116,7 @@ func runInteractiveEncrypt() {
 func runInteractiveDecrypt() {
 	ui.PrintDecryptHeader()
 
-	input := ui.PromptFilePath("📁 Encrypted file", true, "")
+	input := ui.PromptFilePath(lang.T(lang.InteractiveEncryptedFile), true, "")
 	if input == "" {
 		return
 	}
@@ -125,27 +126,27 @@ func runInteractiveDecrypt() {
 	if defaultOutput == input {
 		defaultOutput = input + ".dec"
 	}
-	output := ui.PromptFilePath("📂 Output file", false, defaultOutput)
+	output := ui.PromptFilePath(lang.T(lang.InteractiveOutputFile), false, defaultOutput)
 	if output == "" {
 		output = defaultOutput
 	}
 	fmt.Println()
 
-	password := ui.PromptPassword("🔑 Password", false)
+	password := ui.PromptPassword(lang.T(lang.InteractivePassword), false)
 	if password == "" {
 		return
 	}
 	fmt.Println()
 
 	if err := checkAndConfirmOverwrite(output); err != nil {
-		ui.ErrorColor.Printf("❌ Error: %v\n", err)
+		ui.ErrorColor.Printf(lang.T(lang.CliError), err)
 		fmt.Println()
 		waitForUser()
 		return
 	}
 
 	if err := service.ExecuteDecryption(input, output, password, false); err != nil {
-		ui.ErrorColor.Printf("❌ Error: %v\n", err)
+		ui.ErrorColor.Printf(lang.T(lang.CliError), err)
 	}
 
 	fmt.Println()
@@ -155,9 +156,9 @@ func runInteractiveDecrypt() {
 // promptInputFile prompts the user for the source file path.
 //
 // Returns:
-//   - string: The input file path, or empty string if cancelled
+//   - string: the input file path, or empty string if cancelled
 func promptInputFile() string {
-	input := ui.PromptFilePath("📁 File to encrypt", true, "")
+	input := ui.PromptFilePath(lang.T(lang.InteractiveFileToEncrypt), true, "")
 	if input == "" {
 		return ""
 	}
@@ -168,14 +169,14 @@ func promptInputFile() string {
 // promptOutputFile prompts for output file path with a default value.
 //
 // Parameters:
-//   - input: Source file path used to generate default output name
-//   - extension: File extension to append for default output (e.g., ".enc")
+//   - input: source file path used to generate default output name
+//   - extension: file extension to append for default output (e.g., ".enc")
 //
 // Returns:
-//   - string: The output file path
+//   - string: the output file path
 func promptOutputFile(input, extension string) string {
 	defaultOutput := input + extension
-	output := ui.PromptFilePath("📂 Output file", false, defaultOutput)
+	output := ui.PromptFilePath(lang.T(lang.InteractiveOutputFile), false, defaultOutput)
 	if output == "" {
 		output = defaultOutput
 	}
@@ -189,22 +190,22 @@ func promptOutputFile(input, extension string) string {
 // and verifies that both entries match.
 //
 // Returns:
-//   - string: The confirmed password, or empty string if validation fails
+//   - string: the confirmed password, or empty string if validation fails
 func promptAndConfirmPassword() string {
-	password := ui.PromptPassword("🔑 Password", true)
+	password := ui.PromptPassword(lang.T(lang.InteractivePassword), true)
 	if password == "" {
 		return ""
 	}
 	fmt.Println()
 
-	confirm := ui.PromptPassword("✅ Confirmation", true)
+	confirm := ui.PromptPassword(lang.T(lang.InteractiveConfirm), true)
 	if confirm == "" {
 		return ""
 	}
 	fmt.Println()
 
 	if password != confirm {
-		ui.ErrorColor.Println("❌ Passwords do not match")
+		ui.ErrorColor.Println(lang.T(lang.InteractivePasswordsNotMatch))
 		fmt.Println()
 		return ""
 	}
@@ -215,10 +216,10 @@ func promptAndConfirmPassword() string {
 // checkAndConfirmOverwrite checks if a file exists and prompts for overwrite confirmation.
 //
 // Parameters:
-//   - output: Path to the file to check
+//   - output: path to the file to check
 //
 // Returns:
-//   - error: If the file exists and user declines overwrite, or if check fails
+//   - error: if the file exists and user declines overwrite, or if the check fails
 func checkAndConfirmOverwrite(output string) error {
 	exists, err := service.CheckFileExists(output)
 	if err != nil {
@@ -226,8 +227,8 @@ func checkAndConfirmOverwrite(output string) error {
 	}
 
 	if exists {
-		if !ui.PromptConfirm("⚠️  File already exists. Overwrite?", true) {
-			ui.InfoColor.Println("❌ Operation cancelled")
+		if !ui.PromptConfirm(lang.T(lang.InteractiveOverwrite), true) {
+			ui.InfoColor.Println(lang.T(lang.InteractiveCancel))
 			return fmt.Errorf("user cancelled overwrite")
 		}
 		fmt.Println()
@@ -238,6 +239,6 @@ func checkAndConfirmOverwrite(output string) error {
 
 // waitForUser pauses execution until the user presses Enter.
 func waitForUser() {
-	ui.InfoColor.Println("🔁 Press Enter to continue...")
+	ui.InfoColor.Println(lang.T(lang.InteractivePressEnter))
 	fmt.Scanln()
 }

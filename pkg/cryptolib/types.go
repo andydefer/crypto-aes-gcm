@@ -4,6 +4,8 @@
 // with Argon2id key derivation and parallel streaming capabilities.
 package cryptolib
 
+import "runtime"
+
 const (
 	// Magic identifies files created by this library.
 	//
@@ -45,7 +47,7 @@ const (
 	//
 	// This value provides a good balance between performance and resource usage
 	// on most systems. Workers are automatically clamped to 2×CPU cores.
-	DefaultWorkers = 4
+	// DefaultWorkers = 4
 
 	// DefaultMaxPendingChunks is the default limit of out-of-order chunks buffered in memory
 	// during encryption to prevent memory exhaustion attacks.
@@ -107,8 +109,15 @@ type EncryptorConfig struct {
 // DefaultEncryptorConfig returns the default configuration for Encryptor.
 func DefaultEncryptorConfig() EncryptorConfig {
 	return EncryptorConfig{
-		Workers:          DefaultWorkers,
+		Workers:          DefaultWorkers(),
 		ChunkSize:        DefaultChunkSize,
 		MaxPendingChunks: DefaultMaxPendingChunks,
 	}
+}
+
+// DefaultWorkers respects Go's GOMAXPROCS setting
+func DefaultWorkers() int {
+	maxProcs := runtime.GOMAXPROCS(0)
+
+	return min(max(maxProcs*3/4, 1), 8)
 }

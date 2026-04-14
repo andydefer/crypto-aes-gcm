@@ -6,29 +6,60 @@
 package cli
 
 import (
+	"strings"
+
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 	"github.com/andydefer/crypto-aes-gcm/internal/ui"
 	"github.com/spf13/cobra"
 )
 
 // CLIConfig holds configuration for CLI commands.
-// This replaces the global variables with a structured approach.
 type CLIConfig struct {
 	Pass    string
 	Workers int
 	Force   bool
 	Quiet   bool
+	Lang    string
 }
 
 // GlobalConfig is the shared configuration for all commands.
-// While still a global, it's encapsulated in a struct for better maintainability.
 var GlobalConfig = &CLIConfig{}
+
+// applyLanguage sets the active language based on the flag value.
+//
+// It supports case-insensitive values "en", "english", "fr", "french".
+// If an invalid language is provided, it falls back to English and prints a warning.
+//
+// Parameters:
+//   - langFlag: language flag value from CLI (empty string uses default English)
+func applyLanguage(langFlag string) {
+	if langFlag == "" {
+		lang.SetLanguage(lang.English)
+		return
+	}
+
+	switch strings.ToLower(langFlag) {
+	case "en", "english":
+		lang.SetLanguage(lang.English)
+	case "fr", "french":
+		lang.SetLanguage(lang.French)
+	default:
+		ui.ErrorColor.Printf("⚠️ Invalid language '%s', using English (en). Supported: en, fr\n", langFlag)
+		lang.SetLanguage(lang.English)
+	}
+}
 
 // Execute runs the root command and returns any error encountered.
 //
 // This is the main entry point called from cmd/aescryptool/main.go.
-// It parses command-line arguments, executes the appropriate command,
-// and returns an error that can be used to set the exit code.
+// It ensures the language is initialized before parsing commands.
+//
+// Returns:
+//   - error: any error from command execution, or nil on success
 func Execute() error {
+	if lang.GetLanguage() == "" {
+		lang.SetLanguage(lang.English)
+	}
 	return rootCmd.Execute()
 }
 
@@ -38,44 +69,44 @@ func Execute() error {
 // without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "aescryptool",
-	Short: "🔐 Secure file encryption using AES-256-GCM",
+	Short: lang.T(lang.RootShortDesc),
 	Long: ui.HeaderColor.Sprint(`
 ╔══════════════════════════════════════════════════════════════╗
 ║                 🔐 AESCRYPTOOL - AES-GCM                     ║
 ╚══════════════════════════════════════════════════════════════╝
-`) + "\n\n" + ui.InfoColor.Sprint("Usage:") + ` aescryptool [command] [flags]
+`) + "\n\n" + ui.InfoColor.Sprint(lang.T(lang.RootUsage)) + ` aescryptool [command] [flags]
 
-Commands:
-  encrypt   Encrypt a file
-  decrypt   Decrypt a file
-  interact  Interactive mode with guided prompts
-  version   Show version information
+` + ui.InfoColor.Sprint(lang.T(lang.RootCommandsTitle)) + `
+  encrypt   ` + lang.T(lang.CmdEncryptShort) + `
+  decrypt   ` + lang.T(lang.CmdDecryptShort) + `
+  interact  ` + lang.T(lang.InteractiveTitle) + `
+  version   ` + lang.T(lang.VersionShortDesc) + `
   help      Display help about any command
 
-Password Management:
+` + ui.InfoColor.Sprint(lang.T(lang.RootPasswordManagement)) + `
   For both encrypt and decrypt commands, you can either:
     - Provide --pass flag (visible in process list)
     - Omit the flag and enter password interactively (recommended)
 
   For encryption, interactive mode includes password confirmation and strength validation.
 
-Examples:
-  # Encrypt with interactive password prompt (recommended)
+` + ui.InfoColor.Sprint(lang.T(lang.RootExamplesTitle)) + `
+  ` + lang.T(lang.RootExampleEncrypt) + `
   aescryptool encrypt secret.txt secret.enc
 
-  # Decrypt with interactive password prompt (recommended)
+  ` + lang.T(lang.RootExampleDecrypt) + `
   aescryptool decrypt secret.enc secret.txt
 
-  # Encrypt with --pass flag (for scripts)
+  ` + lang.T(lang.RootExamplePassFlag) + `
   aescryptool encrypt secret.txt secret.enc --pass "myPassword"
 
-  # With parallel processing (8 workers)
+  ` + lang.T(lang.RootExampleWorkers) + `
   aescryptool encrypt largefile.mp4 encrypted.enc --workers 8
 
-  # Force overwrite without confirmation
+  ` + lang.T(lang.RootExampleForce) + `
   aescryptool encrypt data.txt data.enc --force
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		return cmd.Help()
 	},
 }
@@ -85,6 +116,7 @@ Examples:
 // This runs automatically when the package is imported, setting up the
 // complete command tree before execution.
 func init() {
+	rootCmd.PersistentFlags().StringVar(&GlobalConfig.Lang, "lang", "", "Language for UI (en, fr) - default: en")
 	rootCmd.AddCommand(NewEncryptCmd())
 	rootCmd.AddCommand(NewDecryptCmd())
 	rootCmd.AddCommand(NewInteractCmd())

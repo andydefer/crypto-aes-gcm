@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 	"github.com/andydefer/crypto-aes-gcm/pkg/cryptolib"
 	"github.com/manifoldco/promptui"
 )
@@ -25,11 +26,11 @@ import (
 // PromptOperation displays a selection menu and returns the user's choice.
 func PromptOperation() string {
 	prompt := promptui.Select{
-		Label: "Que souhaitez-vous faire",
+		Label: lang.T(lang.UIPromptOperationLabel),
 		Items: []string{
-			"🔒  Chiffrer un fichier",
-			"🔓  Déchiffrer un fichier",
-			"🚪  Quitter",
+			lang.T(lang.UIPromptEncryptOption),
+			lang.T(lang.UIPromptDecryptOption),
+			lang.T(lang.UIPromptExitOption),
 		},
 		Size: 5,
 	}
@@ -37,7 +38,7 @@ func PromptOperation() string {
 	idx, _, err := prompt.Run()
 	if err != nil {
 		fmt.Println()
-		SuccessColor.Println("👋 Merci d'avoir utilisé CRYPTOOL !")
+		SuccessColor.Println(lang.T(lang.UIPromptGoodbye))
 		fmt.Println()
 		os.Exit(0)
 	}
@@ -53,12 +54,6 @@ func PromptOperation() string {
 }
 
 // PromptFilePath asks the user for a file path with optional validation.
-//
-// The prompt includes:
-//   - Input validation to ensure the path is not empty
-//   - Optional existence check (if mustExist is true)
-//   - Default value support for common paths
-//   - Automatic trimming of leading/trailing spaces
 func PromptFilePath(label string, mustExist bool, defaultValue string) string {
 	for {
 		prompt := promptui.Prompt{
@@ -74,12 +69,11 @@ func PromptFilePath(label string, mustExist bool, defaultValue string) string {
 				return ""
 			}
 			fmt.Println()
-			SuccessColor.Println("👋 Merci d'avoir utilisé CRYPTOOL !")
+			SuccessColor.Println(lang.T(lang.UIPromptGoodbye))
 			fmt.Println()
 			os.Exit(0)
 		}
 
-		// Trim spaces from the result
 		result = strings.TrimSpace(result)
 
 		if result == "" && defaultValue != "" {
@@ -87,18 +81,19 @@ func PromptFilePath(label string, mustExist bool, defaultValue string) string {
 		}
 
 		if result == "" {
-			ErrorColor.Println("❌ Le chemin ne peut pas être vide")
+			ErrorColor.Println(lang.T(lang.UIPromptPathEmpty))
 			continue
 		}
 
 		if mustExist {
 			if _, err := os.Stat(result); os.IsNotExist(err) {
-				ErrorColor.Printf("❌ Le fichier '%s' n'existe pas\n", result)
+				ErrorColor.Printf(lang.T(lang.UIPromptPathNotExist), result)
+				fmt.Println()
 				continue
 			}
 		}
 
-		SuccessColor.Printf("   ✓ %s\n", result)
+		SuccessColor.Printf(lang.T(lang.UIPromptPathSuccess), result)
 		return result
 	}
 }
@@ -117,34 +112,33 @@ func PromptPassword(label string, needValidation bool) string {
 				return ""
 			}
 			fmt.Println()
-			SuccessColor.Println("👋 Merci d'avoir utilisé CRYPTOOL !")
+			SuccessColor.Println(lang.T(lang.UIPromptGoodbye))
 			fmt.Println()
 			os.Exit(0)
 		}
 
-		// Trim spaces from password as well (though unlikely)
 		result = strings.TrimSpace(result)
 
 		if needValidation {
 			if len(result) < 8 {
-				ErrorColor.Println("❌ 8 caractères minimum")
+				ErrorColor.Println(lang.T(lang.UIPromptPasswordMinLength))
 				continue
 			}
 			if !regexp.MustCompile(`[A-Z]`).MatchString(result) {
-				ErrorColor.Println("❌ Une majuscule requise")
+				ErrorColor.Println(lang.T(lang.UIPromptPasswordUppercase))
 				continue
 			}
 			if !regexp.MustCompile(`[a-z]`).MatchString(result) {
-				ErrorColor.Println("❌ Une minuscule requise")
+				ErrorColor.Println(lang.T(lang.UIPromptPasswordLowercase))
 				continue
 			}
 			if !regexp.MustCompile(`[0-9]`).MatchString(result) {
-				ErrorColor.Println("❌ Un chiffre requis")
+				ErrorColor.Println(lang.T(lang.UIPromptPasswordDigit))
 				continue
 			}
 		}
 
-		SuccessColor.Printf("   ✓ %s\n", strings.Repeat("*", len(result)))
+		SuccessColor.Printf(lang.T(lang.UIPromptPasswordSuccess), strings.Repeat("*", len(result)))
 		return result
 	}
 }
@@ -155,17 +149,17 @@ func PromptWorkers() int {
 
 	for {
 		prompt := promptui.Prompt{
-			Label:   fmt.Sprintf("⚙️  Workers (défaut: %d, max: %d)", cryptolib.DefaultWorkers, maxWorkers),
-			Default: fmt.Sprintf("%d", cryptolib.DefaultWorkers),
+			Label:   fmt.Sprintf(lang.T(lang.UIPromptWorkersLabel), cryptolib.DefaultWorkers(), maxWorkers),
+			Default: fmt.Sprintf("%d", cryptolib.DefaultWorkers()),
 		}
 
 		result, err := prompt.Run()
 		if err != nil {
 			if err == promptui.ErrInterrupt {
-				return cryptolib.DefaultWorkers
+				return cryptolib.DefaultWorkers()
 			}
 			fmt.Println()
-			SuccessColor.Println("👋 Merci d'avoir utilisé CRYPTOOL !")
+			SuccessColor.Println(lang.T(lang.UIPromptGoodbye))
 			fmt.Println()
 			os.Exit(0)
 		}
@@ -173,22 +167,22 @@ func PromptWorkers() int {
 		result = strings.TrimSpace(result)
 
 		if result == "" {
-			SuccessColor.Printf("   ✓ %d workers\n", cryptolib.DefaultWorkers)
-			return cryptolib.DefaultWorkers
+			SuccessColor.Printf(lang.T(lang.UIPromptWorkersSuccess), cryptolib.DefaultWorkers())
+			return cryptolib.DefaultWorkers()
 		}
 
 		var w int
 		_, err = fmt.Sscanf(result, "%d", &w)
 		if err != nil || w < 1 {
-			ErrorColor.Println("❌ Nombre valide requis (>=1)")
+			ErrorColor.Println(lang.T(lang.UIPromptWorkersInvalid))
 			continue
 		}
 		if w > maxWorkers {
-			ErrorColor.Printf("❌ Maximum %d workers\n", maxWorkers)
+			ErrorColor.Printf(lang.T(lang.UIPromptWorkersMax), maxWorkers)
 			continue
 		}
 
-		SuccessColor.Printf("   ✓ %d workers\n", w)
+		SuccessColor.Printf(lang.T(lang.UIPromptWorkersSuccess), w)
 		return w
 	}
 }
@@ -201,13 +195,13 @@ func PromptConfirm(label string, defaultValue bool) bool {
 	}
 
 	for {
-		fmt.Printf("❓ %s [%s]: ", label, defaultDisplay)
+		fmt.Printf(lang.T(lang.UIPromptConfirmLabel), label, defaultDisplay)
 
 		reader := bufio.NewReader(os.Stdin)
 		result, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Println()
-			SuccessColor.Println("👋 Merci d'avoir utilisé CRYPTOOL !")
+			SuccessColor.Println(lang.T(lang.UIPromptGoodbye))
 			fmt.Println()
 			os.Exit(0)
 		}
@@ -225,6 +219,6 @@ func PromptConfirm(label string, defaultValue bool) bool {
 			return false
 		}
 
-		ErrorColor.Println("❌ Répondez par y/n")
+		ErrorColor.Println(lang.T(lang.UIPromptConfirmInvalid))
 	}
 }

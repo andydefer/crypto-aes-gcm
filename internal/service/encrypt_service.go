@@ -13,6 +13,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 	"github.com/andydefer/crypto-aes-gcm/internal/ui"
 	"github.com/andydefer/crypto-aes-gcm/pkg/cryptolib"
 )
@@ -247,7 +248,7 @@ func (n *noopProgressBar) Clear() error { return nil }
 func openFile(path string) (io.ReadCloser, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("ouverture du fichier '%s': %w", path, err)
+		return nil, fmt.Errorf(lang.T(lang.ErrOpenFile), path, err)
 	}
 	return f, nil
 }

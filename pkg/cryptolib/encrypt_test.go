@@ -124,7 +124,7 @@ func TestEncryptor_WrongPassword(t *testing.T) {
 
 	encryptedFile := filepath.Join(t.TempDir(), "encrypted.bin")
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestEncryptor_StreamingInterface(t *testing.T) {
 	var encryptedBuf bytes.Buffer
 	var decryptedBuf bytes.Buffer
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}
@@ -234,7 +234,7 @@ func TestEncryptor_MemoryUsage(t *testing.T) {
 
 	encryptedFile := filepath.Join(t.TempDir(), "encrypted.bin")
 
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}
@@ -294,7 +294,7 @@ func TestNewEncryptorBackwardCompatibility(t *testing.T) {
 	testData := []byte("backward compatibility test")
 
 	// Old API
-	encryptor, err := NewEncryptor(DefaultWorkers)
+	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("NewEncryptor failed: %v", err)
 	}

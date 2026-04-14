@@ -11,6 +11,7 @@ Un outil de chiffrement sécurisé et performant utilisant **AES-256-GCM** en mo
 ## ✨ Fonctionnalités
 
 - 🔐 **Chiffrement ultra-sécurisé** avec AES-256-GCM (authentification par chunk)
+- 🌍 **Support multilingue** (Français / Anglais) avec flag `--lang`
 - 🎮 **Mode interactif** - Interface guidée sans ligne de commande complexe
 - 🔑 **Prompt interactif pour mot de passe** - Plus besoin d'exposer le mot de passe dans la ligne de commande
 - 🚀 **Traitement parallèle** configurable (jusqu'à 2×CPU cores)
@@ -60,15 +61,42 @@ aescryptool version
 make install-check         # Vérifie si l'installation est correcte
 ```
 
+## 🌍 Support multilingue
+
+L'interface peut être affichée en **Français** ou en **Anglais** via le flag `--lang` :
+
+```bash
+# Interface en français (par défaut si LANG=fr_FR)
+aescryptool encrypt document.pdf document.pdf.enc --lang fr
+
+# Interface en anglais
+aescryptool encrypt document.pdf document.pdf.enc --lang en
+
+# Le flag est disponible pour toutes les commandes
+aescryptool --lang fr version
+aescryptool --lang en decrypt secret.enc secret.txt
+aescryptool --lang fr interact
+```
+
+**Langues supportées :**
+- `en` ou `english` - Anglais (défaut)
+- `fr` ou `french` - Français
+
+> 💡 **Astuce** : Si vous ne spécifiez pas `--lang`, l'interface utilise la langue de votre environnement (`$LANG`).
+
 ## 🎮 Mode interactif
 
 Le mode interactif guide l'utilisateur étape par étape sans mémoriser les options :
 
 ```bash
-aescryptool interact
+# En français
+aescryptool interact --lang fr
+
+# En anglais
+aescryptool interact --lang en
 ```
 
-### Menu interactif :
+### Menu interactif (français) :
 
 ```
 ╔════════════════════════════════════════════════════════════════════╗
@@ -87,31 +115,23 @@ aescryptool interact
     🚪  Quitter
 ```
 
-### Exemple de session interactive (chiffrement) :
+### Menu interactif (anglais) :
 
 ```
-🔐 CHIFFREMENT DE FICHIER
-────────────────────────────────────────
+╔════════════════════════════════════════════════════════════════════╗
+║                 🎮 AESCRYPTOOL - INTERACTIVE MODE                  ║
+║                                                                    ║
+║  Follow the prompts to encrypt or decrypt your files               ║
+║  All inputs will be validated before execution                     ║
+║                                                                    ║
+║  Ctrl+C = Return to menu | Ctrl+D = Quit                           ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝
 
-📁 Fichier à chiffrer: document.pdf
-   ✓ document.pdf
-
-📂 Fichier de sortie: document.pdf.enc
-   ✓ document.pdf.enc
-
-🔑 Mot de passe: **********
-   ✓ **********
-
-✅ Confirmation: **********
-   ✓ **********
-
-⚙️  Workers (défaut: 4, max: 16): 4
-   ✓ 4 workers
-
-❓ ⚠️  Le fichier existe déjà. Écraser ? [Y/n]: y
-
-🔒 Chiffrement [████████████████████] 100%
-✅ Fichier chiffré : document.pdf.enc
+📋 What do you want to do:
+  ▸ 🔒  Encrypt a file
+    🔓  Decrypt a file
+    🚪  Exit
 ```
 
 ## Commandes de base
@@ -121,6 +141,8 @@ aescryptool interact
 ```bash
 # Lance le mode interactif avec prompts guidés
 aescryptool interact
+aescryptool interact --lang fr   # Version française
+aescryptool interact --lang en   # Version anglaise
 ```
 
 ### Mode non-interactif (CLI classique)
@@ -136,6 +158,10 @@ aescryptool decrypt monfichier.enc monfichier.txt
 aescryptool encrypt monfichier.txt monfichier.enc --pass "monMotDePasse"
 aescryptool decrypt monfichier.enc monfichier.txt --pass "monMotDePasse"
 
+# Avec choix de langue
+aescryptool encrypt monfichier.txt monfichier.enc --lang fr
+aescryptool decrypt monfichier.enc monfichier.txt --lang en
+
 # Aide
 aescryptool --help
 aescryptool encrypt --help
@@ -145,8 +171,9 @@ aescryptool encrypt --help
 
 | Option | Description |
 |--------|-------------|
+| `--lang` | Langue de l'interface (`en`, `fr`) - défaut: anglais |
 | `--pass, -p` | Mot de passe (optionnel - sera demandé interactivement si omis) |
-| `--workers, -w` | Accélération pour gros fichiers (défaut: 4, max: 2×CPU) |
+| `--workers, -w` | Accélération pour gros fichiers (défaut: auto, max: 2×CPU) |
 | `--force, -f` | Écraser sans demander confirmation |
 | `--quiet, -q` | Mode silencieux (pas de barre de progression) |
 
@@ -155,22 +182,22 @@ aescryptool encrypt --help
 ### 📄 Documents personnels
 
 ```bash
-# Recommandé - avec prompt interactif
-aescryptool encrypt declaration-2024.pdf declaration-2024.pdf.enc
+# Recommandé - avec prompt interactif (français)
+aescryptool encrypt declaration-2024.pdf declaration-2024.pdf.enc --lang fr
 
-# Pour scripts - avec flag --pass
-aescryptool encrypt declaration-2024.pdf declaration-2024.pdf.enc --pass "MotDePasseFort123!"
+# Pour scripts - avec flag --pass (anglais)
+aescryptool encrypt declaration-2024.pdf declaration-2024.pdf.enc --pass "MotDePasseFort123!" --lang en
 
-# Mode interactif complet
-aescryptool interact
+# Mode interactif complet (français)
+aescryptool interact --lang fr
 # → Choisir "Chiffrer" → suivre les invites
 ```
 
 ### 🎥 Vidéos (gros fichiers)
 
 ```bash
-# Avec optimisation parallèle (8 workers) et prompt interactif
-aescryptool encrypt video.mp4 video.mp4.enc --workers 8
+# Avec optimisation parallèle (8 workers)
+aescryptool encrypt video.mp4 video.mp4.enc --workers 8 --lang fr
 
 # Avec flag --pass pour scripts
 aescryptool encrypt video.mp4 video.mp4.enc --pass "Vacances2024!" --workers 8
@@ -179,10 +206,10 @@ aescryptool encrypt video.mp4 video.mp4.enc --pass "Vacances2024!" --workers 8
 ### 📦 Chiffrement de dossier
 
 ```bash
-# Compresser + chiffrer (avec prompt)
-tar czf - dossier/ | aescryptool encrypt /dev/stdin backup.enc
+# Compresser + chiffrer
+tar czf - dossier/ | aescryptool encrypt /dev/stdin backup.enc --lang fr
 
-# Déchiffrer + décompresser (avec prompt)
+# Déchiffrer + décompresser
 aescryptool decrypt backup.enc /dev/stdout | tar xzf -
 ```
 
@@ -190,11 +217,11 @@ aescryptool decrypt backup.enc /dev/stdout | tar xzf -
 
 | Problème | Cause probable | Solution |
 |----------|---------------|----------|
-| `le fichier n'existe pas` | Fichier source introuvable | Vérifier le chemin |
-| `le fichier existe déjà` | Fichier destination existe | Utiliser `--force` ou confirmer l'écrasement |
-| `le mot de passe ne correspond pas` | Confirmation erronée (chiffrement) | Ressaisir correctement |
-| `le mot de passe ne peut pas être vide` | Aucun mot de passe fourni | Saisir un mot de passe valide |
-| `header authentication failed` | Mot de passe incorrect | Vérifier la casse et les caractères spéciaux |
+| `le fichier n'existe pas` / `file not found` | Fichier source introuvable | Vérifier le chemin |
+| `le fichier existe déjà` / `file already exists` | Fichier destination existe | Utiliser `--force` ou confirmer l'écrasement |
+| `le mot de passe ne correspond pas` / `passwords do not match` | Confirmation erronée (chiffrement) | Ressaisir correctement |
+| `le mot de passe ne peut pas être vide` / `password cannot be empty` | Aucun mot de passe fourni | Saisir un mot de passe valide |
+| `échec d'authentification` / `authentication failed` | Mot de passe incorrect | Vérifier la casse et les caractères spéciaux |
 
 ### Exigences des mots de passe (chiffrement interactif)
 
@@ -232,7 +259,14 @@ crypto-aes-gcm/
 │   ├── argon2/                # Dérivation de clé Argon2id
 │   ├── cli/                   # Commandes Cobra (encrypt, decrypt, interact)
 │   │   └── password.go        # Gestion interactive des mots de passe
+│   ├── crypto/                # Utilitaires cryptographiques (nonce)
 │   ├── header/                # Sérialisation et validation des headers
+│   ├── lang/                  # Système d'internationalisation
+│   │   ├── keys.go            # Toutes les clés de messages
+│   │   ├── english.go         # Bundle anglais
+│   │   ├── french.go          # Bundle français
+│   │   ├── fallback.go        # Messages par défaut (fallback)
+│   │   └── lang.go            # Gestionnaire de langue
 │   ├── service/               # Orchestration métier
 │   ├── ui/                    # Interface utilisateur (couleurs, prompts, progress)
 │   └── utils/                 # Utilitaires (formatage taille)
@@ -325,7 +359,6 @@ const (
     NonceSize              = 12
     KeySize                = 32
     DefaultChunkSize       = 1024 * 1024  // 1MB
-    DefaultWorkers         = 4
     DefaultMaxPendingChunks = 100         // Anti-DoS
     MaxMaxPendingChunks     = 1000        // Absolute maximum
 )
@@ -350,6 +383,9 @@ func DecryptStream(r io.Reader, w io.Writer, passphrase string) error
 
 // Default configuration
 func DefaultEncryptorConfig() EncryptorConfig
+
+// Worker count (dynamic based on CPU)
+func DefaultWorkers() int
 ```
 
 ### Erreurs
@@ -370,9 +406,10 @@ var (
 make help
 
 # 🚀 Run (exécution directe sans build)
-make run-interact          # Mode interactif
+make run-interact          # Mode interactif (français par défaut)
+make run-interact-en       # Mode interactif en anglais
 make run-version           # Affiche la version
-make run ARGS="encrypt test.txt test.enc"  # Arguments personnalisés (prompt pour mot de passe)
+make run ARGS="encrypt test.txt test.enc --lang fr"  # Arguments personnalisés
 make run-encrypt INPUT=file.txt OUTPUT=file.enc PASS=secret  # Avec flag --pass
 make run-decrypt INPUT=file.enc OUTPUT=file.txt PASS=secret
 
@@ -559,5 +596,4 @@ Ce logiciel est fourni "tel quel". Pour des données extrêmement sensibles, con
 
 **Made with 🔐 by andydefer**
 
-*Version 2.0.0 - Mode interactif + Prompt mot de passe + Installation automatique + Streaming pur + Authentification par chunk*
-
+*Version 2.0.0 - Support multilingue + Mode interactif + Prompt mot de passe + Installation automatique + Streaming pur + Authentification par chunk*

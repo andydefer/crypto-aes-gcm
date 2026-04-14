@@ -62,7 +62,7 @@ func TestValidateWorkerCountMax(t *testing.T) {
 // TestValidateWorkerCountDefault verifies that ValidateWorkerCount returns the
 // default worker count when given invalid input values (zero or negative).
 func TestValidateWorkerCountDefault(t *testing.T) {
-	defaultWorkers := cryptolib.DefaultWorkers
+	defaultWorkers := cryptolib.DefaultWorkers()
 
 	result := ValidateWorkerCount(0, true)
 	if result != defaultWorkers {

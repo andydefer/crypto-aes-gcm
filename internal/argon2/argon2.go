@@ -18,9 +18,9 @@ package argon2
 
 import (
 	"errors"
-	"fmt"
 	"runtime"
 
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -60,36 +60,36 @@ const maxThreads = 32
 //   - KeyLen: between 16 and 64 bytes
 func (p Params) Validate() error {
 	if p.Memory < 8*1024 {
-		return fmt.Errorf("memory too low: %d KiB (minimum 8192 KiB)", p.Memory)
+		return errors.New(lang.T(lang.ErrMemoryTooLow, p.Memory))
 	}
 	if p.Memory > 1024*1024 {
-		return fmt.Errorf("memory too high: %d KiB (maximum 1,048,576 KiB)", p.Memory)
+		return errors.New(lang.T(lang.ErrMemoryTooHigh, p.Memory))
 	}
 
 	if p.Threads < 1 {
-		return errors.New("threads must be at least 1")
+		return errors.New(lang.T(lang.ErrThreadsMin))
 	}
 
 	if p.Threads > maxThreads {
-		return fmt.Errorf("threads too high: %d (maximum %d)", p.Threads, maxThreads)
+		return errors.New(lang.T(lang.ErrThreadsMax, p.Threads, maxThreads))
 	}
 
 	if int(p.Threads) > runtime.NumCPU()*2 {
-		return fmt.Errorf("threads exceed system capacity: %d (max %d)", p.Threads, runtime.NumCPU()*2)
+		return errors.New(lang.T(lang.ErrThreadsExceed, p.Threads, runtime.NumCPU()*2))
 	}
 
 	if p.Time < 1 {
-		return errors.New("time must be at least 1")
+		return errors.New(lang.T(lang.ErrTimeMin))
 	}
 	if p.Time > 100 {
-		return fmt.Errorf("time too high: %d (maximum 100)", p.Time)
+		return errors.New(lang.T(lang.ErrTimeMax, p.Time))
 	}
 
 	if p.KeyLen < 16 {
-		return fmt.Errorf("key length too short: %d bytes (minimum 16)", p.KeyLen)
+		return errors.New(lang.T(lang.ErrKeyLenShort, p.KeyLen))
 	}
 	if p.KeyLen > 64 {
-		return fmt.Errorf("key length too long: %d bytes (maximum 64)", p.KeyLen)
+		return errors.New(lang.T(lang.ErrKeyLenLong, p.KeyLen))
 	}
 
 	return nil

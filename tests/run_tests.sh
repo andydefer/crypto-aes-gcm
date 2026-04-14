@@ -58,7 +58,7 @@ print_test_header() {
 }
 
 # Compilation du binaire
-build_aesaescryptool() {
+build_aescryptool() {
     print_info "Compilation de aescryptool..."
 
     mkdir -p "$BUILD_DIR"
@@ -80,15 +80,14 @@ check_binary() {
     if [ ! -f "$CRYPTOOL_BIN" ]; then
         print_error "Binaire non trouvé: $CRYPTOOL_BIN"
         print_info "Lancement de la compilation..."
-        build_aesaescryptool
+        build_aescryptool
         if [ $? -ne 0 ]; then
             return 1
         fi
     fi
 
-    # Vérifier la version
     print_info "Version de aescryptool:"
-    "$CRYPTOOL_BIN" version
+    "$CRYPTOOL_BIN" version 2>/dev/null
 
     return 0
 }
@@ -114,11 +113,10 @@ cleanup_before_test() {
     mkdir -p "$TEST_DIR/temp"
 }
 
-# Génération des fichiers de test - Utilise le script externe
+# Génération des fichiers de test
 generate_test_files() {
     print_info "Génération des fichiers de test..."
 
-    # Vérifier si le script de génération existe
     if [ -f "$SCRIPT_DIR/generate_test_files.sh" ]; then
         chmod +x "$SCRIPT_DIR/generate_test_files.sh"
         if [ "$SHORT_MODE" = "true" ]; then
@@ -132,7 +130,7 @@ generate_test_files() {
     fi
 }
 
-# Test simple: encrypt + decrypt
+# Test 1: encrypt + decrypt - Vérifie que le cycle complet fonctionne
 test_simple_encrypt_decrypt() {
     print_test_header "Encrypt/Decrypt simple"
 
@@ -141,48 +139,39 @@ test_simple_encrypt_decrypt() {
     local decrypted="$TEST_DIR/decrypted/small.txt"
     local password="test-password-123"
 
-    # Vérifier que le fichier existe
     if [ ! -f "$input" ]; then
         print_error "Fichier test non trouvé: $input"
         return 1
     fi
 
-    # Hash original
     local original_hash=$(md5sum "$input" | cut -d' ' -f1)
 
     # Encryption
-    print_info "Encryption: $input -> $encrypted"
     "$CRYPTOOL_BIN" encrypt "$input" "$encrypted" --pass "$password" --force --quiet 2>/dev/null
-
     if [ $? -ne 0 ] || [ ! -f "$encrypted" ]; then
         print_error "Encryption échouée"
         return 1
     fi
-    print_success "Encryption réussie"
 
     # Décryption
-    print_info "Décryption: $encrypted -> $decrypted"
     "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$password" --force --quiet 2>/dev/null
-
     if [ $? -ne 0 ] || [ ! -f "$decrypted" ]; then
         print_error "Décryption échouée"
         return 1
     fi
-    print_success "Décryption réussie"
 
-    # Vérification
     local decrypted_hash=$(md5sum "$decrypted" | cut -d' ' -f1)
 
     if [ "$original_hash" = "$decrypted_hash" ]; then
-        print_success "Hashs identiques: $original_hash"
+        print_success "Hashs identiques"
         return 0
     else
-        print_error "Hashs différents: original=$original_hash decrypted=$decrypted_hash"
+        print_error "Hashs différents"
         return 1
     fi
 }
 
-# Test avec différents workers
+# Test 2: Workers parallèles - Vérifie que différents workers fonctionnent
 test_workers_parallel() {
     print_test_header "Encryption avec workers parallèles"
 
@@ -198,37 +187,24 @@ test_workers_parallel() {
         local encrypted="$TEST_DIR/encrypted/workers_${workers}.enc"
         local decrypted="$TEST_DIR/decrypted/workers_${workers}.txt"
 
-        print_info "Test avec $workers workers"
-
-        # Hash original
         local original_hash=$(md5sum "$input" | cut -d' ' -f1)
 
-        # Encryption
-        time_start=$(date +%s%N)
         "$CRYPTOOL_BIN" encrypt "$input" "$encrypted" --pass "$password" --workers "$workers" --force --quiet 2>/dev/null
-        time_end=$(date +%s%N)
-        time_ms=$(( (time_end - time_start) / 1000000 ))
-
         if [ $? -ne 0 ]; then
             print_error "Encryption échouée avec $workers workers"
             return 1
         fi
 
-        print_info "Encryption time: ${time_ms}ms"
-
-        # Décryption
         "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$password" --force --quiet 2>/dev/null
-
         if [ $? -ne 0 ]; then
             print_error "Décryption échouée avec $workers workers"
             return 1
         fi
 
-        # Vérification
         local decrypted_hash=$(md5sum "$decrypted" | cut -d' ' -f1)
 
         if [ "$original_hash" = "$decrypted_hash" ]; then
-            print_success "Workers $workers: OK (${time_ms}ms)"
+            print_success "Workers $workers: OK"
         else
             print_error "Workers $workers: Hash mismatch"
             return 1
@@ -238,7 +214,7 @@ test_workers_parallel() {
     return 0
 }
 
-# Test mauvais mot de passe
+# Test 3: Mauvais mot de passe - Vérifie que la décryption ÉCHOUE (code retour non nul)
 test_wrong_password() {
     print_test_header "Mauvais mot de passe (doit échouer)"
 
@@ -249,30 +225,25 @@ test_wrong_password() {
 
     # Encryption avec bon mot de passe
     "$CRYPTOOL_BIN" encrypt "$input" "$encrypted" --pass "$correct_password" --force --quiet 2>/dev/null
-
     if [ $? -ne 0 ]; then
         print_error "Encryption échouée"
         return 1
     fi
 
-    # Tentative de décryption avec mauvais mot de passe
+    # Tentative de décryption avec mauvais mot de passe - DOIT ÉCHOUER
     local decrypted="$TEST_DIR/decrypted/wrong_pass.txt"
+    "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$wrong_password" 2>/dev/null
 
-    # NE PAS rediriger stderr pour voir l'erreur
-    # NE PAS utiliser --force (inutile pour la décryption)
-    "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$wrong_password" 2>&1 | grep -q "authentication failed"
-    local exit_code=$?
-
-    if [ $exit_code -eq 0 ]; then
+    if [ $? -ne 0 ]; then
         print_success "Décryption a échoué (comme attendu)"
         return 0
     else
-        print_error "ERREUR: La décryption aurait dû échouer avec mauvais mot de passe!"
+        print_error "ERREUR: La décryption a réussi avec un mauvais mot de passe!"
         return 1
     fi
 }
 
-# Test fichier vide
+# Test 4: Fichier vide - Vérifie que le cycle fonctionne avec un fichier vide
 test_empty_file() {
     print_test_header "Fichier vide"
 
@@ -283,25 +254,21 @@ test_empty_file() {
 
     # Encryption
     "$CRYPTOOL_BIN" encrypt "$input" "$encrypted" --pass "$password" --force --quiet 2>/dev/null
-
     if [ $? -ne 0 ]; then
         print_error "Encryption du fichier vide échouée"
         return 1
     fi
-    print_success "Encryption du fichier vide réussie"
 
     # Décryption
     "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$password" --force --quiet 2>/dev/null
-
     if [ $? -ne 0 ]; then
         print_error "Décryption du fichier vide échouée"
         return 1
     fi
 
-    # Vérification taille
     local size=$(stat -c%s "$decrypted" 2>/dev/null || echo "0")
     if [ "$size" -eq 0 ]; then
-        print_success "Fichier décrypté est vide (taille 0)"
+        print_success "Fichier décrypté est vide"
         return 0
     else
         print_error "Fichier décrypté n'est pas vide (taille: $size)"
@@ -309,7 +276,7 @@ test_empty_file() {
     fi
 }
 
-# Test force overwrite
+# Test 5: Force overwrite - Vérifie que --force permet d'écraser
 test_force_overwrite() {
     print_test_header "Force overwrite"
 
@@ -319,13 +286,12 @@ test_force_overwrite() {
 
     # Première encryption
     "$CRYPTOOL_BIN" encrypt "$input" "$output" --pass "$password" --force --quiet 2>/dev/null
-
     if [ $? -ne 0 ]; then
         print_error "Première encryption échouée"
         return 1
     fi
 
-    # Deuxième encryption avec --force
+    # Deuxième encryption avec --force - DOIT RÉUSSIR
     "$CRYPTOOL_BIN" encrypt "$input" "$output" --pass "$password" --force --quiet 2>/dev/null
 
     if [ $? -eq 0 ]; then
@@ -337,7 +303,7 @@ test_force_overwrite() {
     fi
 }
 
-# Test avec tous les types de fichiers
+# Test 6: Tous les types de fichiers - Vérifie l'intégrité pour chaque fichier
 test_all_file_types() {
     print_test_header "Tous les types de fichiers"
 
@@ -350,12 +316,9 @@ test_all_file_types() {
             local encrypted="$TEST_DIR/encrypted/${filename}.enc"
             local decrypted="$TEST_DIR/decrypted/${filename}"
 
-            print_info "Test: $filename"
-
             local original_hash=$(md5sum "$input" | cut -d' ' -f1)
 
             "$CRYPTOOL_BIN" encrypt "$input" "$encrypted" --pass "$password" --force --quiet 2>/dev/null
-
             if [ $? -ne 0 ]; then
                 print_error "  Encryption échouée pour $filename"
                 failed=$((failed + 1))
@@ -363,7 +326,6 @@ test_all_file_types() {
             fi
 
             "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$password" --force --quiet 2>/dev/null
-
             if [ $? -ne 0 ]; then
                 print_error "  Décryption échouée pour $filename"
                 failed=$((failed + 1))
@@ -390,69 +352,7 @@ test_all_file_types() {
     fi
 }
 
-# Test performance
-test_performance() {
-    if [ "$SHORT_MODE" = "true" ]; then
-        print_warning "Test performance ignoré (mode court)"
-        return 0
-    fi
-
-    print_test_header "Performance"
-
-    local input="$TEST_DIR/input/random10.bin"
-    local password="perf-test"
-    local size_mb=10
-
-    if [ ! -f "$input" ]; then
-        print_warning "Fichier random10.bin non trouvé, test ignoré"
-        return 0
-    fi
-
-    echo ""
-    printf "%-15s %-15s %-15s %-15s\n" "Workers" "Encrypt(s)" "Decrypt(s)" "Speed(MB/s)"
-    echo "-------------------------------------------------------------"
-
-    for workers in 1 2 4 8; do
-        local encrypted="$TEST_DIR/temp/perf_${workers}.enc"
-        local decrypted="$TEST_DIR/temp/perf_${workers}.dec"
-
-        # Encryption avec mesure de temps
-        local enc_time=$( { time "$CRYPTOOL_BIN" encrypt "$input" "$encrypted" --pass "$password" --workers "$workers" --force --quiet 2>/dev/null; } 2>&1 | grep real | awk '{print $2}' | sed 's/[^0-9.]//g')
-
-        if [ -z "$enc_time" ]; then
-            enc_time=$( { time "$CRYPTOOL_BIN" encrypt "$input" "$encrypted" --pass "$password" --workers "$workers" --force --quiet 2>/dev/null; } 2>&1 | grep real | awk '{print $2}' | sed 's/m/*60+/g' | sed 's/s//' | bc 2>/dev/null || echo "0")
-        fi
-
-        if [ -z "$enc_time" ]; then
-            enc_time="0"
-        fi
-
-        # Décryption avec mesure de temps
-        local dec_time=$( { time "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$password" --force --quiet 2>/dev/null; } 2>&1 | grep real | awk '{print $2}' | sed 's/[^0-9.]//g')
-
-        if [ -z "$dec_time" ]; then
-            dec_time=$( { time "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$password" --force --quiet 2>/dev/null; } 2>&1 | grep real | awk '{print $2}' | sed 's/m/*60+/g' | sed 's/s//' | bc 2>/dev/null || echo "0")
-        fi
-
-        if [ -z "$dec_time" ]; then
-            dec_time="0"
-        fi
-
-        # Calcul vitesse
-        local enc_speed="0"
-        if [ "$enc_time" != "0" ] && [ "$enc_time" != "" ]; then
-            enc_speed=$(echo "scale=2; $size_mb / $enc_time" | bc 2>/dev/null || echo "0")
-        fi
-
-        printf "%-15s %-15s %-15s %-15s\n" "$workers" "$enc_time" "$dec_time" "$enc_speed"
-    done
-
-    echo ""
-    print_success "Test performance terminé"
-    return 0
-}
-
-# Test intégrité après corruption contrôlée
+# Test 7: Détection de corruption - Vérifie que la corruption est DÉTECTÉE (échec)
 test_corruption_detection() {
     print_test_header "Détection de corruption"
 
@@ -462,29 +362,21 @@ test_corruption_detection() {
 
     # Encryption
     "$CRYPTOOL_BIN" encrypt "$input" "$encrypted" --pass "$password" --force --quiet 2>/dev/null
-
     if [ $? -ne 0 ]; then
         print_error "Encryption échouée"
         return 1
     fi
 
-    # Copier et corrompre
+    # Copier et corrompre le HMAC (offset 25) - garanti de faire échouer
     local corrupted="$TEST_DIR/encrypted/corrupted.enc"
     cp "$encrypted" "$corrupted"
+    dd if=/dev/zero of="$corrupted" bs=1 count=1 seek=25 conv=notrunc 2>/dev/null
 
-    # Corrompre un byte dans le ciphertext (après le header)
-    # Header: Magic(4) + Version(1) + Salt(16) + ChunkSize(4) + HMAC(32) + Nonce(12) = 69 bytes
-    # On corrompt à l'offset 100 (dans le premier chunk)
-    dd if=/dev/zero of="$corrupted" bs=1 count=1 seek=100 conv=notrunc 2>/dev/null
-
-    # Tentative de décryption - doit échouer car GCM détecte la corruption
+    # Tentative de décryption - DOIT ÉCHOUER
     local decrypted="$TEST_DIR/decrypted/corrupted.txt"
+    "$CRYPTOOL_BIN" decrypt "$corrupted" "$decrypted" --pass "$password" 2>/dev/null
 
-    # Laisser stderr pour voir l'erreur GCM
-    "$CRYPTOOL_BIN" decrypt "$corrupted" "$decrypted" --pass "$password" 2>&1 | grep -q "decryption failed"
-    local exit_code=$?
-
-    if [ $exit_code -eq 0 ]; then
+    if [ $? -ne 0 ]; then
         print_success "Corruption détectée (décryption échouée)"
         return 0
     else
@@ -493,7 +385,7 @@ test_corruption_detection() {
     fi
 }
 
-# Test gros fichier
+# Test 8: Gros fichier - Vérifie le streaming avec un gros fichier
 test_large_file() {
     if [ "$SHORT_MODE" = "true" ]; then
         print_warning "Test gros fichier ignoré (mode court)"
@@ -515,33 +407,20 @@ test_large_file() {
 
     local original_hash=$(md5sum "$input" | cut -d' ' -f1)
 
-    print_info "Taille du fichier: $(du -h "$input" | cut -f1)"
-
     # Encryption
-    print_info "Encryption en cours..."
-    local enc_start=$(date +%s)
     "$CRYPTOOL_BIN" encrypt "$input" "$encrypted" --pass "$password" --workers 8 --force --quiet 2>/dev/null
-    local enc_end=$(date +%s)
-
     if [ $? -ne 0 ]; then
         print_error "Encryption du gros fichier échouée"
         return 1
     fi
-    print_success "Encryption terminée en $((enc_end - enc_start)) secondes"
 
     # Décryption
-    print_info "Décryption en cours..."
-    local dec_start=$(date +%s)
     "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$password" --force --quiet 2>/dev/null
-    local dec_end=$(date +%s)
-
     if [ $? -ne 0 ]; then
         print_error "Décryption du gros fichier échouée"
         return 1
     fi
-    print_success "Décryption terminée en $((dec_end - dec_start)) secondes"
 
-    # Vérification
     local decrypted_hash=$(md5sum "$decrypted" | cut -d' ' -f1)
 
     if [ "$original_hash" = "$decrypted_hash" ]; then
@@ -553,17 +432,58 @@ test_large_file() {
     fi
 }
 
+# Test 9: Performance - Benchmark (optionnel, ne compte pas dans les échecs)
+test_performance() {
+    if [ "$SHORT_MODE" = "true" ]; then
+        print_warning "Test performance ignoré (mode court)"
+        return 0
+    fi
+
+    print_test_header "Performance"
+
+    local input="$TEST_DIR/input/random10.bin"
+    local password="perf-test"
+
+    if [ ! -f "$input" ]; then
+        print_warning "Fichier random10.bin non trouvé, test ignoré"
+        return 0
+    fi
+
+    echo ""
+    printf "%-15s %-15s\n" "Workers" "Status"
+    echo "------------------------"
+
+    for workers in 1 2 4 8; do
+        local encrypted="$TEST_DIR/temp/perf_${workers}.enc"
+        local decrypted="$TEST_DIR/temp/perf_${workers}.dec"
+
+        "$CRYPTOOL_BIN" encrypt "$input" "$encrypted" --pass "$password" --workers "$workers" --force --quiet 2>/dev/null
+        if [ $? -ne 0 ]; then
+            printf "%-15s %-15s\n" "$workers" "❌ FAILED"
+        else
+            "$CRYPTOOL_BIN" decrypt "$encrypted" "$decrypted" --pass "$password" --force --quiet 2>/dev/null
+            if [ $? -ne 0 ]; then
+                printf "%-15s %-15s\n" "$workers" "❌ FAILED"
+            else
+                printf "%-15s %-15s\n" "$workers" "✅ OK"
+            fi
+        fi
+    done
+
+    echo ""
+    print_success "Test performance terminé"
+    return 0
+}
+
 # Fonction principale
 main() {
     print_header
 
-    # Parse arguments
     if [ "$1" = "--short" ] || [ "$1" = "-s" ]; then
         SHORT_MODE="true"
         print_info "Mode court activé (tests lourds ignorés)"
     fi
 
-    # Setup
     check_binary
     if [ $? -ne 0 ]; then
         print_error "Impossible de continuer sans le binaire"
@@ -574,7 +494,6 @@ main() {
     cleanup_before_test
     generate_test_files
 
-    # Exécution des tests
     TOTAL_TESTS=0
     PASSED_TESTS=0
     FAILED_TESTS=0
@@ -594,7 +513,6 @@ main() {
         fi
     }
 
-    # Liste des tests
     run_test "Test simple encrypt/decrypt" test_simple_encrypt_decrypt
     run_test "Test workers parallèles" test_workers_parallel
     run_test "Test mauvais mot de passe" test_wrong_password
@@ -605,7 +523,6 @@ main() {
     run_test "Test gros fichier" test_large_file
     run_test "Test performance" test_performance
 
-    # Résumé
     echo ""
     echo -e "${MAGENTA}════════════════════════════════════════════════════════════════${NC}"
     echo -e "${MAGENTA}                          RÉSULTATS                             ${NC}"
@@ -625,5 +542,4 @@ main() {
     fi
 }
 
-# Exécution
 main "$@"

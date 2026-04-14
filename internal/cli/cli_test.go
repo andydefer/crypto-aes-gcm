@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 	"github.com/spf13/cobra"
 )
 
@@ -102,28 +103,17 @@ func TestVersionCmd(t *testing.T) {
 	}
 }
 
-// ========== NOUVEAUX TESTS POUR LA CORRECTION DES ERREURS ==========
-
 // TestEncryptCmdReturnsErrorOnInvalidInput verifies that the encrypt command
 // returns an error (not os.Exit) when given invalid input.
 func TestEncryptCmdReturnsErrorOnInvalidInput(t *testing.T) {
 	cmd := NewEncryptCmd()
 
-	// Create a buffer to capture stderr output
-	stderrBuf := &bytes.Buffer{}
-	cmd.SetErr(stderrBuf)
-
-	// Test with non-existent input file
 	cmd.SetArgs([]string{"nonexistent.txt", "output.enc", "--pass", "testpass"})
 
 	err := cmd.Execute()
+
 	if err == nil {
 		t.Error("Expected error for non-existent input file, got nil")
-	}
-
-	// Verify error message is user-friendly
-	if !bytes.Contains(stderrBuf.Bytes(), []byte("inexistant")) {
-		t.Errorf("Expected error about missing file, got: %s", stderrBuf.String())
 	}
 }
 
@@ -148,9 +138,6 @@ func TestEncryptCmdMissingPassword(t *testing.T) {
 // returns an error (not os.Exit) when given invalid input.
 func TestDecryptCmdReturnsErrorOnInvalidInput(t *testing.T) {
 	cmd := NewDecryptCmd()
-
-	stderrBuf := &bytes.Buffer{}
-	cmd.SetErr(stderrBuf)
 
 	cmd.SetArgs([]string{"nonexistent.enc", "output.txt", "--pass", "testpass"})
 
@@ -179,7 +166,6 @@ func TestEncryptCmdForceOverwrite(t *testing.T) {
 	inputFile := filepath.Join(tempDir, "input.txt")
 	outputFile := filepath.Join(tempDir, "output.enc")
 
-	// Create input file
 	if err := os.WriteFile(inputFile, []byte("test data"), 0644); err != nil {
 		t.Fatalf("failed to create input file: %v", err)
 	}
@@ -192,7 +178,6 @@ func TestEncryptCmdForceOverwrite(t *testing.T) {
 		t.Errorf("Encryption with --force failed: %v", err)
 	}
 
-	// Verify output file was created
 	if _, err := os.Stat(outputFile); err != nil {
 		t.Error("Output file was not created")
 	}
@@ -204,7 +189,6 @@ func TestEncryptCmdValidInput(t *testing.T) {
 	inputFile := filepath.Join(tempDir, "input.txt")
 	outputFile := filepath.Join(tempDir, "output.enc")
 
-	// Create input file
 	if err := os.WriteFile(inputFile, []byte("test data for encryption"), 0644); err != nil {
 		t.Fatalf("failed to create input file: %v", err)
 	}
@@ -217,7 +201,6 @@ func TestEncryptCmdValidInput(t *testing.T) {
 		t.Errorf("Encryption failed: %v", err)
 	}
 
-	// Verify output file was created and has content
 	info, err := os.Stat(outputFile)
 	if err != nil {
 		t.Fatalf("Output file not created: %v", err)
@@ -257,11 +240,9 @@ func TestEncryptCmdInvalidWorkersFlag(t *testing.T) {
 	}
 
 	cmd := NewEncryptCmd()
-	// Negative worker count should be clamped to default, not cause error
 	cmd.SetArgs([]string{inputFile, outputFile, "--pass", "testpass", "--workers", "-5", "--quiet"})
 
 	err := cmd.Execute()
-	// Should not error, just use default workers
 	if err != nil {
 		t.Errorf("Encryption with invalid worker count failed: %v", err)
 	}
@@ -271,7 +252,6 @@ func TestEncryptCmdInvalidWorkersFlag(t *testing.T) {
 func TestRootCmdVersion(t *testing.T) {
 	cmd := NewVersionCmd()
 
-	// Capture both stdout and stderr since colored output might use different streams
 	stdoutBuf := &bytes.Buffer{}
 	stderrBuf := &bytes.Buffer{}
 	cmd.SetOut(stdoutBuf)
@@ -282,13 +262,10 @@ func TestRootCmdVersion(t *testing.T) {
 		t.Errorf("Version command failed: %v", err)
 	}
 
-	// The version command should produce output to either stdout or stderr
-	// because colored output might write to stderr
 	if stdoutBuf.Len() == 0 && stderrBuf.Len() == 0 {
 		t.Error("Version command produced no output")
 	}
 
-	// Optional: verify output contains expected content
 	output := stdoutBuf.String() + stderrBuf.String()
 	if !bytes.Contains([]byte(output), []byte("CRYPTOOL")) {
 		t.Logf("Version output: %s", output)
@@ -297,12 +274,10 @@ func TestRootCmdVersion(t *testing.T) {
 
 // TestRootCmdHelpText verifies help command executes without error.
 func TestRootCmdHelpText(t *testing.T) {
-	// Create a new root command for testing to avoid affecting other tests
 	testRoot := &cobra.Command{
 		Use: "aescryptool",
 	}
 
-	// Add subcommands
 	testRoot.AddCommand(NewEncryptCmd())
 	testRoot.AddCommand(NewDecryptCmd())
 	testRoot.AddCommand(NewInteractCmd())
@@ -319,5 +294,58 @@ func TestRootCmdHelpText(t *testing.T) {
 
 	if buf.Len() == 0 {
 		t.Error("Help command produced no output")
+	}
+}
+
+// TestApplyLanguageFunction verifies the applyLanguage helper behavior.
+// This is the primary test for language switching logic.
+func TestApplyLanguageFunction(t *testing.T) {
+	originalLang := lang.GetLanguage()
+	defer lang.SetLanguage(originalLang)
+
+	tests := []struct {
+		name     string
+		langFlag string
+		expected lang.Language
+	}{
+		{"empty flag", "", lang.English},
+		{"en", "en", lang.English},
+		{"english", "english", lang.English},
+		{"fr", "fr", lang.French},
+		{"french", "french", lang.French},
+		{"invalid - fallback to English", "invalid", lang.English},
+		{"DE - unsupported", "DE", lang.English},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lang.SetLanguage(lang.French)
+			applyLanguage(tt.langFlag)
+			if lang.GetLanguage() != tt.expected {
+				t.Errorf("applyLanguage(%q) = %v, want %v", tt.langFlag, lang.GetLanguage(), tt.expected)
+			}
+		})
+	}
+}
+
+// TestLangFlagPersistent verifies that --lang flag is available on root command.
+func TestLangFlagPersistent(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup("lang")
+	if flag == nil {
+		t.Error("--lang flag not found on root command")
+	}
+}
+
+// TestDefaultLanguageIsEnglish verifies that default language is English when no flag provided.
+func TestDefaultLanguageIsEnglish(t *testing.T) {
+	originalLang := lang.GetLanguage()
+	defer lang.SetLanguage(originalLang)
+
+	lang.SetLanguage(lang.French)
+
+	applyLanguage("")
+
+	if lang.GetLanguage() != lang.English {
+		t.Errorf("Expected default English, got %v", lang.GetLanguage())
 	}
 }

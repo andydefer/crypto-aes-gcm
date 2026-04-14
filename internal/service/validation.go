@@ -8,16 +8,18 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
 
+	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 	"github.com/andydefer/crypto-aes-gcm/internal/ui"
 	"github.com/andydefer/crypto-aes-gcm/pkg/cryptolib"
 )
 
 // ErrFileExists indicates that the output file already exists and force is false.
-var ErrFileExists = fmt.Errorf("fichier existe déjà")
+var ErrFileExists = errors.New(lang.T(lang.ErrFileAlreadyExists))
 
 // ValidateWorkerCount ensures the worker count is within reasonable bounds.
 //
@@ -35,12 +37,12 @@ var ErrFileExists = fmt.Errorf("fichier existe déjà")
 //   - int: A valid worker count between 1 and 2×runtime.NumCPU()
 func ValidateWorkerCount(requested int, quiet bool) int {
 	if requested <= 0 {
-		return cryptolib.DefaultWorkers
+		return cryptolib.DefaultWorkers()
 	}
 	maxWorkers := runtime.NumCPU() * 2
 	if requested > maxWorkers {
 		if !quiet {
-			ui.WarningColor.Printf("⚠️ Workers réduit à %d\n", maxWorkers)
+			ui.WarningColor.Printf(lang.T(lang.WarnWorkersReduced), maxWorkers)
 		}
 		return maxWorkers
 	}
@@ -56,7 +58,7 @@ func ValidateWorkerCount(requested int, quiet bool) int {
 //   - error: nil if the file exists, otherwise an error describing the issue
 func ValidateInputFile(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return fmt.Errorf("fichier '%s' inexistant", path)
+		return fmt.Errorf("%s", fmt.Sprintf(lang.T(lang.ErrFileNotFound), path))
 	}
 	return nil
 }
