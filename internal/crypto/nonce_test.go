@@ -64,3 +64,52 @@ func TestDeriveChunkNonce_LargeIndex(t *testing.T) {
 	// Should not panic
 	_ = DeriveChunkNonce(baseNonce, largeIndex+1)
 }
+
+// TestDeriveChunkNonceFast verifies that the fast version produces the same
+// results as the standard version.
+func TestDeriveChunkNonceFast(t *testing.T) {
+	baseNonce := []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B}
+	chunkIndex := uint64(12345)
+
+	expected := DeriveChunkNonce(baseNonce, chunkIndex)
+
+	dest := make([]byte, NonceSize)
+	err := DeriveChunkNonceFast(dest, baseNonce, chunkIndex)
+	if err != nil {
+		t.Fatalf("DeriveChunkNonceFast failed: %v", err)
+	}
+
+	if !bytes.Equal(expected, dest) {
+		t.Errorf("DeriveChunkNonceFast produced different result:\nExpected: %v\nGot: %v", expected, dest)
+	}
+}
+
+// TestDeriveChunkNonceFast_ShortDest verifies error handling for short destination.
+func TestDeriveChunkNonceFast_ShortDest(t *testing.T) {
+	baseNonce := make([]byte, NonceSize)
+	dest := make([]byte, NonceSize-1) // Trop court
+
+	err := DeriveChunkNonceFast(dest, baseNonce, 0)
+	if err == nil {
+		t.Error("Expected error for short destination, got nil")
+	}
+}
+
+// BenchmarkDeriveChunkNonce compares performance of standard vs fast version.
+func BenchmarkDeriveChunkNonce(b *testing.B) {
+	baseNonce := make([]byte, NonceSize)
+
+	b.Run("Standard", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = DeriveChunkNonce(baseNonce, uint64(i))
+		}
+	})
+
+	b.Run("Fast", func(b *testing.B) {
+		dest := make([]byte, NonceSize)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = DeriveChunkNonceFast(dest, baseNonce, uint64(i))
+		}
+	})
+}

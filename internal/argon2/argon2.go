@@ -16,7 +16,13 @@
 //	key := argon2.DeriveKey("myPassword", salt, params)
 package argon2
 
-import "golang.org/x/crypto/argon2"
+import (
+	"errors"
+	"fmt"
+	"runtime"
+
+	"golang.org/x/crypto/argon2"
+)
 
 // Params configures the Argon2id key derivation algorithm.
 //
@@ -43,6 +49,52 @@ type Params struct {
 	KeyLen  uint32
 }
 
+const maxThreads = 32
+
+// Validate checks if the parameters are within safe ranges.
+//
+// Returns an error if any parameter is outside acceptable bounds:
+//   - Memory: between 8 MiB and 1 GiB
+//   - Threads: at least 1 and within system capacity
+//   - Time: between 1 and 100
+//   - KeyLen: between 16 and 64 bytes
+func (p Params) Validate() error {
+	if p.Memory < 8*1024 {
+		return fmt.Errorf("memory too low: %d KiB (minimum 8192 KiB)", p.Memory)
+	}
+	if p.Memory > 1024*1024 {
+		return fmt.Errorf("memory too high: %d KiB (maximum 1,048,576 KiB)", p.Memory)
+	}
+
+	if p.Threads < 1 {
+		return errors.New("threads must be at least 1")
+	}
+
+	if p.Threads > maxThreads {
+		return fmt.Errorf("threads too high: %d (maximum %d)", p.Threads, maxThreads)
+	}
+
+	if int(p.Threads) > runtime.NumCPU()*2 {
+		return fmt.Errorf("threads exceed system capacity: %d (max %d)", p.Threads, runtime.NumCPU()*2)
+	}
+
+	if p.Time < 1 {
+		return errors.New("time must be at least 1")
+	}
+	if p.Time > 100 {
+		return fmt.Errorf("time too high: %d (maximum 100)", p.Time)
+	}
+
+	if p.KeyLen < 16 {
+		return fmt.Errorf("key length too short: %d bytes (minimum 16)", p.KeyLen)
+	}
+	if p.KeyLen > 64 {
+		return fmt.Errorf("key length too long: %d bytes (maximum 64)", p.KeyLen)
+	}
+
+	return nil
+}
+
 // DefaultParams returns secure, production-ready default parameters for Argon2id.
 //
 // These parameters provide approximately 100ms derivation time on modern hardware
@@ -53,9 +105,9 @@ type Params struct {
 func DefaultParams() Params {
 	return Params{
 		Time:    4,
-		Memory:  64 * 1024, // 64 MiB
+		Memory:  64 * 1024,
 		Threads: 4,
-		KeyLen:  32, // 256 bits for AES-256
+		KeyLen:  32,
 	}
 }
 
@@ -84,6 +136,10 @@ func DefaultParams() Params {
 //	rand.Read(salt)
 //	key := argon2.DeriveKey("myPassphrase", salt, argon2.DefaultParams())
 func DeriveKey(passphrase string, salt []byte, params Params) []byte {
+	if err := params.Validate(); err != nil {
+		params = DefaultParams()
+	}
+
 	return argon2.IDKey(
 		[]byte(passphrase),
 		salt,

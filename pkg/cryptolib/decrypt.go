@@ -26,12 +26,23 @@ import (
 )
 
 // Decryptor handles decryption of data encrypted with Encryptor.
+// It manages the cryptographic state and streaming decryption process.
 type Decryptor struct {
 	key       []byte
 	chunkSize int
 }
 
 // NewDecryptor creates a Decryptor using the provided passphrase and salt.
+//
+// Parameters:
+//   - passphrase: The user's secret passphrase for key derivation
+//   - salt: Cryptographic salt from the encrypted file header
+//
+// Returns:
+//   - *Decryptor: Configured decryptor instance
+//   - error: If key derivation fails or parameters are invalid
+//
+// The function derives an encryption key using Argon2id with default parameters.
 func NewDecryptor(passphrase string, salt []byte) (*Decryptor, error) {
 	params := argon2.DefaultParams()
 	key := argon2.DeriveKey(passphrase, salt, params)
@@ -43,6 +54,15 @@ func NewDecryptor(passphrase string, salt []byte) (*Decryptor, error) {
 }
 
 // DecryptFile decrypts a file at inputPath and writes the result to outputPath.
+//
+// Parameters:
+//   - inputPath: Path to the encrypted file
+//   - outputPath: Path where decrypted content will be written
+//
+// Returns:
+//   - error: Any error encountered during file operations or decryption
+//
+// This is a convenience wrapper around Decrypt that handles file opening/closing.
 func (d *Decryptor) DecryptFile(inputPath, outputPath string) error {
 	input, err := os.Open(inputPath)
 	if err != nil {
@@ -60,6 +80,16 @@ func (d *Decryptor) DecryptFile(inputPath, outputPath string) error {
 }
 
 // Decrypt reads encrypted data from r and writes the plaintext to w.
+//
+// Parameters:
+//   - reader: Source of encrypted data (typically a file or network stream)
+//   - writer: Destination for decrypted plaintext
+//
+// Returns:
+//   - error: If header validation, key setup, or decryption fails
+//
+// The function validates the file header, sets up the AES-GCM cipher,
+// and processes the encrypted stream chunk by chunk.
 func (d *Decryptor) Decrypt(reader io.Reader, writer io.Writer) error {
 	headerData, baseNonce, err := d.readAndVerifyHeader(reader)
 	if err != nil {
@@ -82,6 +112,16 @@ func (d *Decryptor) Decrypt(reader io.Reader, writer io.Writer) error {
 }
 
 // readAndVerifyHeader extracts and validates the encrypted file header.
+//
+// Parameters:
+//   - reader: Source containing the encrypted file header
+//
+// Returns:
+//   - FileHeader: Parsed header information
+//   - []byte: Base nonce for chunk counter derivation
+//   - error: If header validation fails
+//
+// The function verifies magic bytes, version compatibility, and HMAC integrity.
 func (d *Decryptor) readAndVerifyHeader(reader io.Reader) (FileHeader, []byte, error) {
 	var headerData FileHeader
 	if err := binary.Read(reader, binary.BigEndian, &headerData); err != nil {
@@ -121,8 +161,23 @@ func (d *Decryptor) readAndVerifyHeader(reader io.Reader) (FileHeader, []byte, e
 }
 
 // processDecryption streams chunks from the reader, decrypts them, and writes to the writer.
+//
+// Parameters:
+//   - reader: Source of encrypted chunks
+//   - writer: Destination for decrypted plaintext
+//   - gcm: GCM cipher for authenticated decryption
+//   - baseNonce: Base nonce for counter-based nonce derivation
+//
+// Returns:
+//   - error: If chunk reading, decryption, or writing fails
+//
+// The function reads chunk length prefixes, decrypts authenticated ciphertext,
+// and writes plaintext sequentially. A zero-length chunk marks the end of stream.
+// Nonces are derived efficiently using a pre-allocated buffer to minimize allocations.
 func (d *Decryptor) processDecryption(reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonce []byte) error {
 	var chunkIndex uint64
+
+	var nonceBuf [crypto.NonceSize]byte
 
 	for {
 		var chunkLen uint32
@@ -144,9 +199,11 @@ func (d *Decryptor) processDecryption(reader io.Reader, writer io.Writer, gcm ci
 			return fmt.Errorf("read ciphertext chunk %d: %w", chunkIndex, err)
 		}
 
-		nonce := crypto.DeriveChunkNonce(baseNonce, chunkIndex)
+		if err := crypto.DeriveChunkNonceFast(nonceBuf[:], baseNonce, chunkIndex); err != nil {
+			return fmt.Errorf("derive nonce for chunk %d: %w", chunkIndex, err)
+		}
 
-		plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+		plaintext, err := gcm.Open(nil, nonceBuf[:], ciphertext, nil)
 		if err != nil {
 			return fmt.Errorf("%w chunk %d: %w", ErrDecryptionFailed, chunkIndex, err)
 		}

@@ -8,7 +8,9 @@
 package service
 
 import (
+	"context"
 	"encoding/binary"
+	"io"
 	"os"
 
 	"github.com/andydefer/crypto-aes-gcm/internal/ui"
@@ -38,53 +40,59 @@ import (
 //   - error: Any error encountered during file operations, header parsing,
 //     decryptor creation, or the decryption process itself
 func ExecuteDecryption(input, output, password string, quiet bool) error {
-	// Get file size for progress bar
+	return ExecuteDecryptionWithContext(context.Background(), input, output, password, quiet)
+}
+
+// ExecuteDecryptionWithContext performs decryption with context support for cancellation.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//   - input: Path to the encrypted source file
+//   - output: Path where decrypted plaintext will be written
+//   - password: Passphrase used for encryption (must match original)
+//   - quiet: If true, suppresses progress bar output
+//
+// Returns:
+//   - error: Any error encountered during decryption or context cancellation
+//
+// The function uses a goroutine to perform the actual decryption while listening
+// for context cancellation. On cancellation, the operation is aborted and the
+// partially created output file is removed.
+func ExecuteDecryptionWithContext(ctx context.Context, input, output, password string, quiet bool) (err error) {
 	fileInfo, err := os.Stat(input)
 	if err != nil {
 		return err
 	}
 	fileSize := fileInfo.Size()
 
-	// Initialize progress bar
-	var bar ui.ProgressBar
-	if !quiet {
-		bar = ui.CreateProgressBar(fileSize, "🔓 Decrypting")
-	} else {
-		bar = &noopProgressBar{}
-	}
+	bar := createProgressBar(quiet, fileSize)
 
-	// Open encrypted file
 	f, err := os.Open(input)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer closeWithErrorHandling(f, &err)
 
-	// Read and validate file header
 	var header cryptolib.FileHeader
 	if err := binary.Read(f, binary.BigEndian, &header); err != nil {
 		return err
 	}
 
-	// Create decryptor with password and extracted salt
 	decryptor, err := cryptolib.NewDecryptor(password, header.Salt[:])
 	if err != nil {
 		return err
 	}
 
-	// Rewind to beginning of file for streaming decryption
 	if _, err := f.Seek(0, 0); err != nil {
 		return err
 	}
 
-	// Create progress-tracking reader
 	reader := &progressReader{
 		r:     f,
 		bar:   bar,
 		total: fileSize,
 	}
 
-	// Create output file with cleanup on failure
 	outFile, err := os.Create(output)
 	if err != nil {
 		return err
@@ -92,15 +100,15 @@ func ExecuteDecryption(input, output, password string, quiet bool) error {
 
 	success := false
 	defer func() {
-		outFile.Close()
+		if closeErr := outFile.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
 		if !success {
 			_ = os.Remove(output)
 		}
 	}()
 
-	// Perform streaming decryption
-	if err := decryptor.Decrypt(reader, outFile); err != nil {
-		_ = bar.Clear()
+	if err := decryptWithContext(ctx, decryptor, reader, outFile, bar); err != nil {
 		return err
 	}
 
@@ -108,4 +116,66 @@ func ExecuteDecryption(input, output, password string, quiet bool) error {
 	_ = bar.Finish()
 	ui.PrintSuccess(output, fileSize)
 	return nil
+}
+
+// createProgressBar initializes a progress bar for tracking decryption progress.
+//
+// Parameters:
+//   - quiet: If true, returns a no-op progress bar that does nothing
+//   - fileSize: Total size of the input file in bytes
+//
+// Returns:
+//   - ui.ProgressBar: A progress bar implementation (either real or no-op)
+func createProgressBar(quiet bool, fileSize int64) ui.ProgressBar {
+	if quiet {
+		return &noopProgressBar{}
+	}
+	return ui.CreateProgressBar(fileSize, "🔓 Decrypting")
+}
+
+// decryptWithContext performs streaming decryption with context cancellation support.
+//
+// Parameters:
+//   - ctx: Context for cancellation control
+//   - decryptor: Decryptor instance to perform the decryption
+//   - reader: Source of encrypted data
+//   - writer: Destination for decrypted data
+//   - bar: Progress bar for user feedback
+//
+// Returns:
+//   - error: Decryption error or context cancellation error
+//
+// The function runs decryption in a goroutine and listens for context cancellation.
+// If the context is cancelled, the decryption is aborted and the progress bar is cleared.
+func decryptWithContext(ctx context.Context, decryptor *cryptolib.Decryptor, reader io.Reader, writer io.Writer, bar ui.ProgressBar) error {
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- decryptor.Decrypt(reader, writer)
+	}()
+
+	select {
+	case <-ctx.Done():
+		_ = bar.Clear()
+		return ctx.Err()
+	case err := <-errChan:
+		if err != nil {
+			_ = bar.Clear()
+			return err
+		}
+		return nil
+	}
+}
+
+// closeWithErrorHandling closes a file and updates the error reference if closing fails.
+//
+// Parameters:
+//   - f: File to close
+//   - err: Pointer to error that will be updated if close operation fails and no error exists
+//
+// This helper function ensures proper error propagation during defer statements.
+// If an error already exists, it takes precedence over the close error.
+func closeWithErrorHandling(f *os.File, err *error) {
+	if closeErr := f.Close(); closeErr != nil && *err == nil {
+		*err = closeErr
+	}
 }

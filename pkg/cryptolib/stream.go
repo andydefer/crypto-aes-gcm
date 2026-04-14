@@ -31,7 +31,7 @@ import (
 // Returns:
 //   - error: If header validation fails, decryption fails, or IO operations fail
 func DecryptStream(reader io.Reader, writer io.Writer, passphrase string) error {
-	headerData, key, baseNonce, err := readAndValidateHeader(reader, passphrase)
+	_, key, baseNonce, err := readAndValidateHeader(reader, passphrase)
 	if err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func DecryptStream(reader io.Reader, writer io.Writer, passphrase string) error 
 		return err
 	}
 
-	return decryptChunks(reader, writer, gcm, baseNonce, headerData.ChunkSize)
+	return decryptChunks(reader, writer, gcm, baseNonce)
 }
 
 // readAndValidateHeader reads the file header, validates magic bytes and version,
@@ -133,12 +133,12 @@ func createGCMCipher(key []byte) (cipher.AEAD, error) {
 //   - writer: Writer for decrypted plaintext
 //   - gcm: GCM cipher for authenticated decryption
 //   - baseNonce: Base nonce from file header
-//   - chunkSize: Size of chunks used during encryption (for validation)
 //
 // Returns:
 //   - error: If chunk reading, decryption, or writing fails
-func decryptChunks(reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonce []byte, chunkSize uint32) error {
+func decryptChunks(reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonce []byte) error {
 	var chunkIndex uint64
+	var nonceBuf [crypto.NonceSize]byte
 
 	for {
 		var chunkLen uint32
@@ -160,9 +160,11 @@ func decryptChunks(reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonc
 			return fmt.Errorf("read ciphertext chunk %d: %w", chunkIndex, err)
 		}
 
-		nonce := crypto.DeriveChunkNonce(baseNonce, chunkIndex)
+		if err := crypto.DeriveChunkNonceFast(nonceBuf[:], baseNonce, chunkIndex); err != nil {
+			return fmt.Errorf("derive nonce for chunk %d: %w", chunkIndex, err)
+		}
 
-		plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+		plaintext, err := gcm.Open(nil, nonceBuf[:], ciphertext, nil)
 		if err != nil {
 			return fmt.Errorf("%w chunk %d: %w", ErrDecryptionFailed, chunkIndex, err)
 		}

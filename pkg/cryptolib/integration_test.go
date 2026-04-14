@@ -299,7 +299,7 @@ func TestEncryptionDeterminism(t *testing.T) {
 //
 // The test is skipped if the binary is not found (run 'make build' first).
 func TestCLIBinary(t *testing.T) {
-	binaryPath := findBinary(t)
+	binaryPath := findBinary()
 	if binaryPath == "" {
 		t.Skip("aescryptool binary not found, run 'make build' first")
 	}
@@ -346,7 +346,7 @@ func TestCLIBinary(t *testing.T) {
 //
 // The test is skipped if the binary is not found.
 func TestEndToEndEncryptionDecryption(t *testing.T) {
-	binaryPath := findBinary(t)
+	binaryPath := findBinary()
 	if binaryPath == "" {
 		t.Skip("aescryptool binary not found, run 'make build' first")
 	}
@@ -398,7 +398,7 @@ func TestEndToEndEncryptionDecryption(t *testing.T) {
 //   - The error message indicates authentication failure
 //   - No output file is created (or it is deleted on failure)
 func TestWrongPassword(t *testing.T) {
-	binaryPath := findBinary(t)
+	binaryPath := findBinary()
 	if binaryPath == "" {
 		t.Skip("aescryptool binary not found, run 'make build' first")
 	}
@@ -443,7 +443,7 @@ func TestWrongPassword(t *testing.T) {
 // with the --force flag. It verifies that the operation succeeds without
 // prompting for confirmation.
 func TestForceOverwrite(t *testing.T) {
-	binaryPath := findBinary(t)
+	binaryPath := findBinary()
 	if binaryPath == "" {
 		t.Skip("aescryptool binary not found, run 'make build' first")
 	}
@@ -480,7 +480,7 @@ func TestLargeFile(t *testing.T) {
 		t.Skip("skipping large file test in short mode")
 	}
 
-	binaryPath := findBinary(t)
+	binaryPath := findBinary()
 	if binaryPath == "" {
 		t.Skip("aescryptool binary not found, run 'make build' first")
 	}
@@ -525,7 +525,7 @@ func TestLargeFile(t *testing.T) {
 // This test launches 5 goroutines, each encrypting and decrypting its own file.
 // It verifies that concurrent CLI invocations don't interfere with each other.
 func TestConcurrentOperations(t *testing.T) {
-	binaryPath := findBinary(t)
+	binaryPath := findBinary()
 	if binaryPath == "" {
 		t.Skip("aescryptool binary not found, run 'make build' first")
 	}
@@ -603,7 +603,7 @@ func TestConcurrentOperations(t *testing.T) {
 //   - aescryptool (PATH)
 //
 // Returns an empty string if the binary is not found.
-func findBinary(t *testing.T) string {
+func findBinary() string {
 	locations := []string{
 		"../build/aescryptool",
 		"../../build/aescryptool",

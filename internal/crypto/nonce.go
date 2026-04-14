@@ -4,7 +4,10 @@
 // multiple packages to avoid code duplication.
 package crypto
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"fmt"
+)
 
 const (
 	// NonceSize is the length of the GCM nonce in bytes.
@@ -18,6 +21,9 @@ const (
 // deterministic, unique nonces for each chunk based on the base nonce
 // and the chunk's sequential index.
 //
+// The XOR operation is applied to the last 8 bytes of the nonce (bytes 4-11)
+// to preserve the first 4 bytes which may contain fixed header information.
+//
 // Parameters:
 //   - baseNonce: Base nonce from the file header (must be NonceSize bytes)
 //   - chunkIndex: Sequential index of the current chunk (0-based)
@@ -30,15 +36,50 @@ const (
 //	baseNonce := make([]byte, NonceSize)
 //	nonce := DeriveChunkNonce(baseNonce, 42)
 func DeriveChunkNonce(baseNonce []byte, chunkIndex uint64) []byte {
-	nonce := make([]byte, NonceSize)
-	copy(nonce, baseNonce)
+	// Use a fixed-size array to avoid allocation
+	var nonce [NonceSize]byte
+	copy(nonce[:], baseNonce)
 
+	// XOR the chunk index into the last 8 bytes of the nonce
+	// This provides 2^64 unique nonces per base nonce
 	indexBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(indexBytes, chunkIndex)
 
+	// XOR starting at offset 4 to preserve first 4 bytes if needed
 	for i := 0; i < 8 && i < NonceSize-4; i++ {
 		nonce[4+i] ^= indexBytes[i]
 	}
 
-	return nonce
+	// Return a copy to prevent accidental modification of the array
+	return append([]byte(nil), nonce[:]...)
+}
+
+// DeriveChunkNonceFast is an optimized version that reuses a buffer.
+// It writes the result directly into the provided destination slice.
+//
+// This function is faster than DeriveChunkNonce when called repeatedly
+// because it avoids allocations. Use this in performance-critical code
+// where you can guarantee the destination slice length.
+//
+// Parameters:
+//   - dest: Destination slice (must be length >= NonceSize)
+//   - baseNonce: Base nonce from the file header
+//   - chunkIndex: Sequential index of the current chunk
+//
+// Returns:
+//   - error: nil on success, or an error if dest is too short
+func DeriveChunkNonceFast(dest []byte, baseNonce []byte, chunkIndex uint64) error {
+	if len(dest) < NonceSize {
+		return fmt.Errorf("dest slice too short: need %d, got %d", NonceSize, len(dest))
+	}
+	copy(dest, baseNonce)
+
+	// XOR chunk index into nonce
+	var indexBytes [8]byte
+	binary.BigEndian.PutUint64(indexBytes[:], chunkIndex)
+
+	for i := 0; i < 8 && i < NonceSize-4; i++ {
+		dest[4+i] ^= indexBytes[i]
+	}
+	return nil
 }

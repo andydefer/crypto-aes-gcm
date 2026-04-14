@@ -1,8 +1,7 @@
-// Package cli provides password handling with interactive prompts.
+// Package cli provides password handling with interactive prompts for encryption/decryption operations.
 package cli
 
 import (
-	"bufio"
 	"fmt"
 	"regexp"
 	"strings"
@@ -11,130 +10,108 @@ import (
 	"golang.org/x/term"
 )
 
-// resolvePassword retrieves the password from flags or prompts interactively.
-// For encryption (needConfirmation=true), it prompts twice and verifies match.
-// For decryption (needConfirmation=false), it prompts once.
-func resolvePassword(flagPass string, needConfirmation bool) (string, error) {
-	// If password provided via flag, use it directly
+// ResolvePassword retrieves the password from flags or prompts interactively.
+//
+// Parameters:
+//   - flagPass: Password provided via command-line flag (empty if not provided)
+//   - needConfirmation: If true, prompts twice and verifies match (encryption mode);
+//     if false, prompts once (decryption mode)
+//
+// Returns:
+//   - string: The resolved password
+//   - error: If password validation fails or user input cannot be read
+//
+// When flagPass is non-empty, it's used directly without prompting.
+// Flag-provided passwords skip confirmation to maintain script compatibility.
+func ResolvePassword(flagPass string, needConfirmation bool) (string, error) {
 	if flagPass != "" {
-		if needConfirmation {
-			// For encryption, even flag-provided passwords should be confirmed?
-			// Skip confirmation for flag to maintain script compatibility
-			return flagPass, nil
-		}
 		return flagPass, nil
 	}
 
-	// No flag provided - prompt interactively
 	if needConfirmation {
 		return promptPasswordWithConfirm()
 	}
 	return promptPassword()
 }
 
-// promptPassword asks for a password once (for decryption)
+// promptPassword asks for a password once (for decryption mode).
+//
+// Returns:
+//   - string: The entered password (trimmed)
+//   - error: If password reading fails or password is empty
 func promptPassword() (string, error) {
-	fmt.Print("🔑 Mot de passe: ")
+	fmt.Print("🔑 Password: ")
 	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("read password: %w", err)
 	}
 	fmt.Println()
 
 	password := strings.TrimSpace(string(bytePassword))
 
-	// Basic validation for decryption (non-empty)
 	if password == "" {
-		return "", fmt.Errorf("le mot de passe ne peut pas être vide")
+		return "", fmt.Errorf("password cannot be empty")
 	}
 
 	return password, nil
 }
 
-// promptPasswordWithConfirm asks for password twice and validates strength (for encryption)
+// promptPasswordWithConfirm asks for password twice and validates strength (for encryption mode).
+//
+// Returns:
+//   - string: The confirmed password (trimmed)
+//   - error: If password reading fails, validation fails, or passwords don't match
 func promptPasswordWithConfirm() (string, error) {
-	// First password entry
-	fmt.Print("🔑 Mot de passe: ")
+	fmt.Print("🔑 Password: ")
 	bytePassword1, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("read password: %w", err)
 	}
 	fmt.Println()
 
 	password1 := strings.TrimSpace(string(bytePassword1))
 
-	// Validate password strength
 	if err := validatePasswordStrength(password1); err != nil {
 		return "", err
 	}
 
-	// Second password entry for confirmation
-	fmt.Print("✅ Confirmation du mot de passe: ")
+	fmt.Print("✅ Confirm password: ")
 	bytePassword2, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("read confirmation: %w", err)
 	}
 	fmt.Println()
 
 	password2 := strings.TrimSpace(string(bytePassword2))
 
-	// Check if passwords match
 	if password1 != password2 {
-		return "", fmt.Errorf("les mots de passe ne correspondent pas")
+		return "", fmt.Errorf("passwords do not match")
 	}
 
 	return password1, nil
 }
 
 // validatePasswordStrength checks if password meets security requirements.
+//
 // Requirements:
 //   - Minimum length: 8 characters
 //   - At least one uppercase letter (A-Z)
 //   - At least one lowercase letter (a-z)
 //   - At least one digit (0-9)
+//
+// Returns an error with a descriptive message if any requirement is not met.
 func validatePasswordStrength(password string) error {
 	if len(password) < 8 {
-		return fmt.Errorf("8 caractères minimum requis")
+		return fmt.Errorf("minimum 8 characters required")
 	}
 	if !regexp.MustCompile(`[A-Z]`).MatchString(password) {
-		return fmt.Errorf("au moins une majuscule requise")
+		return fmt.Errorf("at least one uppercase letter required")
 	}
 	if !regexp.MustCompile(`[a-z]`).MatchString(password) {
-		return fmt.Errorf("au moins une minuscule requise")
+		return fmt.Errorf("at least one lowercase letter required")
 	}
 	if !regexp.MustCompile(`[0-9]`).MatchString(password) {
-		return fmt.Errorf("au moins un chiffre requis")
+		return fmt.Errorf("at least one digit required")
 	}
 	return nil
-}
-
-// promptPasswordFromReader is used for testing with mocked input
-func promptPasswordFromReader(reader *bufio.Reader, needConfirmation bool) (string, error) {
-	if needConfirmation {
-		fmt.Print("🔑 Mot de passe: ")
-		password1, _ := reader.ReadString('\n')
-		password1 = strings.TrimSpace(password1)
-
-		if err := validatePasswordStrength(password1); err != nil {
-			return "", err
-		}
-
-		fmt.Print("✅ Confirmation du mot de passe: ")
-		password2, _ := reader.ReadString('\n')
-		password2 = strings.TrimSpace(password2)
-
-		if password1 != password2 {
-			return "", fmt.Errorf("les mots de passe ne correspondent pas")
-		}
-		return password1, nil
-	}
-
-	fmt.Print("🔑 Mot de passe: ")
-	password, _ := reader.ReadString('\n')
-	password = strings.TrimSpace(password)
-
-	if password == "" {
-		return "", fmt.Errorf("le mot de passe ne peut pas être vide")
-	}
-	return password, nil
 }

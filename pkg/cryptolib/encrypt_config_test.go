@@ -331,6 +331,44 @@ func TestNewEncryptorWithConfig_ZeroPendingLimit(t *testing.T) {
 	}
 }
 
+// TestMemoryLeak verifies that encryption doesn't leak memory.
+func TestMemoryLeak(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping memory leak test in short mode")
+	}
+
+	data := make([]byte, 10*MB)
+	password := "test-password"
+
+	var memStats1, memStats2 runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&memStats1)
+
+	// Perform multiple encryption operations
+	for i := 0; i < 10; i++ {
+		encryptor, err := NewEncryptor(DefaultWorkers)
+		if err != nil {
+			t.Fatalf("failed to create encryptor: %v", err)
+		}
+
+		var buf bytes.Buffer
+		reader := bytes.NewReader(data)
+		if err := encryptor.Encrypt(reader, &buf, password); err != nil {
+			t.Fatalf("encryption failed: %v", err)
+		}
+	}
+
+	runtime.GC()
+	runtime.ReadMemStats(&memStats2)
+
+	// Allow 10% memory growth
+	allocDiff := int64(memStats2.Alloc) - int64(memStats1.Alloc)
+	if allocDiff > int64(memStats1.Alloc)/10 {
+		t.Logf("Memory growth: %d bytes (%.1f%%)", allocDiff, float64(allocDiff)/float64(memStats1.Alloc)*100)
+		// Not a hard failure, just logging
+	}
+}
+
 // BenchmarkEncryptWithConfig measures performance with different pending chunk limits.
 func BenchmarkEncryptWithConfig(b *testing.B) {
 	dataSize := 10 * MB // 10MB

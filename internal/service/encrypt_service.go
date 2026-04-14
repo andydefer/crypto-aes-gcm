@@ -8,6 +8,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -36,6 +37,11 @@ import (
 //   - error: Any error encountered during file operations, encryptor creation,
 //     or the encryption process itself
 func ExecuteEncryption(input, output, password string, workerCount int, quiet bool) error {
+	return ExecuteEncryptionWithContext(context.Background(), input, output, password, workerCount, quiet)
+}
+
+// ExecuteEncryptionWithContext performs encryption with context support for cancellation.
+func ExecuteEncryptionWithContext(ctx context.Context, input, output, password string, workerCount int, quiet bool) (err error) {
 	fileInfo, err := os.Stat(input)
 	if err != nil {
 		return err
@@ -59,7 +65,15 @@ func ExecuteEncryption(input, output, password string, workerCount int, quiet bo
 	if err != nil {
 		return err
 	}
-	defer inputFile.Close()
+	defer func() {
+		if closeErr := inputFile.Close(); closeErr != nil {
+			if err == nil {
+				err = closeErr
+			} else {
+				err = fmt.Errorf("%v; close input error: %w", err, closeErr)
+			}
+		}
+	}()
 
 	reader := &progressReader{
 		r:     inputFile,
@@ -71,9 +85,18 @@ func ExecuteEncryption(input, output, password string, workerCount int, quiet bo
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
+	defer func() {
+		if closeErr := outFile.Close(); closeErr != nil {
+			if err == nil {
+				err = closeErr
+			} else {
+				err = fmt.Errorf("%v; close output error: %w", err, closeErr)
+			}
+		}
+	}()
 
-	if err := encryptor.Encrypt(reader, outFile, password); err != nil {
+	// Use context-aware encryption
+	if err := encryptor.EncryptWithContext(ctx, reader, outFile, password); err != nil {
 		_ = bar.Clear()
 		return err
 	}
@@ -98,6 +121,11 @@ func ExecuteEncryption(input, output, password string, workerCount int, quiet bo
 // Returns:
 //   - error: Any error encountered during encryption
 func ExecuteEncryptionWithConfig(input, output, password string, config cryptolib.EncryptorConfig, quiet bool) error {
+	return ExecuteEncryptionWithConfigAndContext(context.Background(), input, output, password, config, quiet)
+}
+
+// ExecuteEncryptionWithConfigAndContext performs encryption with custom config and context.
+func ExecuteEncryptionWithConfigAndContext(ctx context.Context, input, output, password string, config cryptolib.EncryptorConfig, quiet bool) (err error) {
 	fileInfo, err := os.Stat(input)
 	if err != nil {
 		return err
@@ -120,7 +148,15 @@ func ExecuteEncryptionWithConfig(input, output, password string, config cryptoli
 	if err != nil {
 		return err
 	}
-	defer inputFile.Close()
+	defer func() {
+		if closeErr := inputFile.Close(); closeErr != nil {
+			if err == nil {
+				err = closeErr
+			} else {
+				err = fmt.Errorf("%v; close input error: %w", err, closeErr)
+			}
+		}
+	}()
 
 	reader := &progressReader{
 		r:     inputFile,
@@ -132,9 +168,17 @@ func ExecuteEncryptionWithConfig(input, output, password string, config cryptoli
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
+	defer func() {
+		if closeErr := outFile.Close(); closeErr != nil {
+			if err == nil {
+				err = closeErr
+			} else {
+				err = fmt.Errorf("%v; close output error: %w", err, closeErr)
+			}
+		}
+	}()
 
-	if err := encryptor.Encrypt(reader, outFile, password); err != nil {
+	if err := encryptor.EncryptWithContext(ctx, reader, outFile, password); err != nil {
 		_ = bar.Clear()
 		return err
 	}

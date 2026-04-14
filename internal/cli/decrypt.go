@@ -104,7 +104,7 @@ func runDecrypt(cmd *cobra.Command, args []string) error {
 
 	// Resolve password (prompt if not provided via flag)
 	// For decryption, needConfirmation=false (single prompt, no confirmation)
-	password, err := resolvePassword(GlobalConfig.Pass, false)
+	password, err := ResolvePassword(GlobalConfig.Pass, false)
 	if err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
 		return err

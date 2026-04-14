@@ -6,6 +6,7 @@
 package cryptolib
 
 import (
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -42,7 +43,14 @@ type chunkResult struct {
 }
 
 // NewEncryptor creates an Encryptor with the specified number of workers.
-// The worker count is clamped between 1 and 2×CPU cores.
+//
+// Parameters:
+//   - workers: Number of parallel encryption workers (clamped between 1 and 2×CPU cores)
+//
+// Returns:
+//   - *Encryptor: Configured encryptor instance
+//   - error: If configuration is invalid after clamping
+//
 // Deprecated: Use NewEncryptorWithConfig instead for full configuration.
 func NewEncryptor(workers int) (*Encryptor, error) {
 	return NewEncryptorWithConfig(EncryptorConfig{
@@ -54,43 +62,21 @@ func NewEncryptor(workers int) (*Encryptor, error) {
 
 // NewEncryptorWithConfig creates an Encryptor with the provided configuration.
 //
+// Parameters:
+//   - config: Configuration parameters for the encryptor
+//
+// Returns:
+//   - *Encryptor: Configured encryptor instance
+//   - error: If configuration is invalid after clamping
+//
 // The configuration values are validated and clamped to safe ranges:
 //   - Workers: clamped between 1 and 2×CPU cores
 //   - ChunkSize: clamped between 1KB and 1GB
 //   - MaxPendingChunks: clamped between 1 and MaxMaxPendingChunks (1000)
-//
-// Returns an error if the configuration is invalid after clamping.
 func NewEncryptorWithConfig(config EncryptorConfig) (*Encryptor, error) {
-	// Validate and clamp workers
-	workers := config.Workers
-	if workers <= 0 {
-		workers = DefaultWorkers
-	}
-	maxWorkers := runtime.NumCPU() * 2
-	if workers > maxWorkers {
-		workers = maxWorkers
-	}
-
-	// Validate and clamp chunk size
-	chunkSize := config.ChunkSize
-	if chunkSize <= 0 {
-		chunkSize = DefaultChunkSize
-	}
-	if chunkSize < header.MinChunkSize {
-		chunkSize = header.MinChunkSize
-	}
-	if chunkSize > header.MaxChunkSize {
-		chunkSize = header.MaxChunkSize
-	}
-
-	// Validate and clamp max pending chunks
-	maxPending := config.MaxPendingChunks
-	if maxPending <= 0 {
-		maxPending = DefaultMaxPendingChunks
-	}
-	if maxPending > MaxMaxPendingChunks {
-		maxPending = MaxMaxPendingChunks
-	}
+	workers := clampWorkers(config.Workers)
+	chunkSize := clampChunkSize(config.ChunkSize)
+	maxPending := clampMaxPending(config.MaxPendingChunks)
 
 	return &Encryptor{
 		workers:          workers,
@@ -106,24 +92,68 @@ func NewEncryptorWithConfig(config EncryptorConfig) (*Encryptor, error) {
 }
 
 // EncryptFile encrypts a file at inputPath and writes the result to outputPath.
+//
+// Parameters:
+//   - inputPath: Path to the plaintext file to encrypt
+//   - outputPath: Path where encrypted output will be written
+//   - passphrase: User passphrase for key derivation
+//
+// Returns:
+//   - error: Any error encountered during file operations or encryption
 func (e *Encryptor) EncryptFile(inputPath, outputPath, passphrase string) error {
+	return e.EncryptFileWithContext(context.Background(), inputPath, outputPath, passphrase)
+}
+
+// EncryptFileWithContext encrypts a file with context support for cancellation.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//   - inputPath: Path to the plaintext file to encrypt
+//   - outputPath: Path where encrypted output will be written
+//   - passphrase: User passphrase for key derivation
+//
+// Returns:
+//   - error: Any error encountered during file operations, encryption, or context cancellation
+func (e *Encryptor) EncryptFileWithContext(ctx context.Context, inputPath, outputPath, passphrase string) (err error) {
 	input, err := os.Open(inputPath)
 	if err != nil {
 		return fmt.Errorf("open input: %w", err)
 	}
-	defer input.Close()
+	defer closeWithErrorHandler(input, &err, "close input")
 
 	output, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("create output: %w", err)
 	}
-	defer output.Close()
+	defer closeWithErrorHandler(output, &err, "close output")
 
-	return e.Encrypt(input, output, passphrase)
+	return e.EncryptWithContext(ctx, input, output, passphrase)
 }
 
 // Encrypt reads from r, encrypts the data, and writes to w.
+//
+// Parameters:
+//   - reader: Source of plaintext data
+//   - writer: Destination for encrypted data
+//   - passphrase: User passphrase for key derivation
+//
+// Returns:
+//   - error: Any error encountered during encryption
 func (e *Encryptor) Encrypt(reader io.Reader, writer io.Writer, passphrase string) error {
+	return e.EncryptWithContext(context.Background(), reader, writer, passphrase)
+}
+
+// EncryptWithContext reads from r, encrypts the data, and writes to w with context support.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//   - reader: Source of plaintext data
+//   - writer: Destination for encrypted data
+//   - passphrase: User passphrase for key derivation
+//
+// Returns:
+//   - error: Any error encountered during encryption or context cancellation
+func (e *Encryptor) EncryptWithContext(ctx context.Context, reader io.Reader, writer io.Writer, passphrase string) error {
 	var salt [SaltSize]byte
 	if _, err := rand.Read(salt[:]); err != nil {
 		return fmt.Errorf("generate salt: %w", err)
@@ -154,10 +184,18 @@ func (e *Encryptor) Encrypt(reader io.Reader, writer io.Writer, passphrase strin
 		return fmt.Errorf("write nonce: %w", err)
 	}
 
-	return e.processEncryption(reader, writer, gcm, baseNonce)
+	return e.processEncryptionWithContext(ctx, reader, writer, gcm, baseNonce)
 }
 
 // writeHeader writes the file header and its HMAC to the writer.
+//
+// Parameters:
+//   - writer: Destination for header data
+//   - key: Encryption key for HMAC computation
+//   - salt: Cryptographic salt to store in header
+//
+// Returns:
+//   - error: If header writing or HMAC computation fails
 func (e *Encryptor) writeHeader(writer io.Writer, key []byte, salt [SaltSize]byte) error {
 	headerData := FileHeader{
 		Magic:     [4]byte{Magic[0], Magic[1], Magic[2], Magic[3]},
@@ -184,26 +222,56 @@ func (e *Encryptor) writeHeader(writer io.Writer, key []byte, salt [SaltSize]byt
 	return nil
 }
 
-// processEncryption orchestrates the parallel encryption pipeline.
-func (e *Encryptor) processEncryption(reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonce []byte) error {
+// processEncryptionWithContext orchestrates the parallel encryption pipeline with context support.
+//
+// Parameters:
+//   - ctx: Context for cancellation control
+//   - reader: Source of plaintext data
+//   - writer: Destination for encrypted data
+//   - gcm: GCM cipher for authenticated encryption
+//   - baseNonce: Base nonce for counter-based nonce derivation
+//
+// Returns:
+//   - error: Any error encountered during the encryption pipeline
+//
+// The function sets up a worker pool for parallel encryption, reads chunks from
+// the input, distributes them to workers, and writes results in order.
+func (e *Encryptor) processEncryptionWithContext(ctx context.Context, reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonce []byte) error {
 	jobs := make(chan chunkJob, e.workers*2)
 	results := make(chan chunkResult, e.workers*2)
-	var workerWaitGroup sync.WaitGroup
+	errChan := make(chan error, 1)
+	var wg sync.WaitGroup
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	for i := 0; i < e.workers; i++ {
-		workerWaitGroup.Add(1)
-		go e.encryptionWorker(gcm, baseNonce, jobs, results, &workerWaitGroup)
+		wg.Add(1)
+		go e.encryptionWorker(ctx, gcm, baseNonce, jobs, results, &wg, errChan)
 	}
 
 	go func() {
-		workerWaitGroup.Wait()
+		if err := e.readChunks(ctx, reader, jobs); err != nil {
+			errChan <- err
+			cancel()
+		}
+		close(jobs)
+	}()
+
+	go func() {
+		wg.Wait()
 		close(results)
 	}()
 
-	go e.readChunks(reader, jobs)
-
-	if err := e.writeResults(results, writer); err != nil {
+	if err := e.writeResultsWithContext(ctx, results, writer); err != nil {
+		cancel()
 		return err
+	}
+
+	select {
+	case err := <-errChan:
+		return err
+	default:
 	}
 
 	if err := binary.Write(writer, binary.BigEndian, uint32(0)); err != nil {
@@ -214,29 +282,72 @@ func (e *Encryptor) processEncryption(reader io.Reader, writer io.Writer, gcm ci
 }
 
 // encryptionWorker encrypts chunks from the jobs channel and sends results.
-func (e *Encryptor) encryptionWorker(gcm cipher.AEAD, baseNonce []byte, jobs <-chan chunkJob, results chan<- chunkResult, waitGroup *sync.WaitGroup) {
-	defer waitGroup.Done()
+//
+// Parameters:
+//   - ctx: Context for cancellation
+//   - gcm: GCM cipher for authenticated encryption
+//   - baseNonce: Base nonce for nonce derivation
+//   - jobs: Channel receiving plaintext chunks
+//   - results: Channel sending encrypted chunks
+//   - wg: WaitGroup for worker coordination
+//   - errChan: Channel for error reporting
+func (e *Encryptor) encryptionWorker(ctx context.Context, gcm cipher.AEAD, baseNonce []byte, jobs <-chan chunkJob, results chan<- chunkResult, wg *sync.WaitGroup, errChan chan<- error) {
+	defer wg.Done()
 
-	for job := range jobs {
-		nonce := crypto.DeriveChunkNonce(baseNonce, job.index)
-		ciphertext := gcm.Seal(nil, nonce, job.data, nil)
+	var nonceBuf [crypto.NonceSize]byte
 
-		results <- chunkResult{
-			index:      job.index,
-			ciphertext: ciphertext,
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case job, ok := <-jobs:
+			if !ok {
+				return
+			}
+
+			if err := crypto.DeriveChunkNonceFast(nonceBuf[:], baseNonce, job.index); err != nil {
+				select {
+				case <-ctx.Done():
+				case errChan <- fmt.Errorf("nonce derivation failed: %w", err):
+				}
+				return
+			}
+
+			ciphertext := gcm.Seal(nil, nonceBuf[:], job.data, nil)
+
+			select {
+			case <-ctx.Done():
+				return
+			case results <- chunkResult{
+				index:      job.index,
+				ciphertext: ciphertext,
+			}:
+			}
+
+			e.bufferPool.Put(&job.data)
 		}
-
-		e.bufferPool.Put(&job.data)
 	}
 }
 
 // readChunks reads plaintext chunks from the reader and sends them to the jobs channel.
-func (e *Encryptor) readChunks(reader io.Reader, jobs chan<- chunkJob) {
-	defer close(jobs)
-
+//
+// Parameters:
+//   - ctx: Context for cancellation
+//   - reader: Source of plaintext data
+//   - jobs: Channel for sending plaintext chunks
+//
+// Returns:
+//   - error: If reading fails or context is cancelled
+func (e *Encryptor) readChunks(ctx context.Context, reader io.Reader, jobs chan<- chunkJob) error {
 	var chunkIndex uint64
 
 	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		bufferPtr := e.bufferPool.Get().(*[]byte)
 		buffer := *bufferPtr
 
@@ -249,8 +360,13 @@ func (e *Encryptor) readChunks(reader io.Reader, jobs chan<- chunkJob) {
 
 		if err == io.ErrUnexpectedEOF {
 			if bytesRead > 0 {
-				jobs <- chunkJob{index: chunkIndex, data: buffer[:bytesRead]}
-				chunkIndex++
+				select {
+				case <-ctx.Done():
+					e.bufferPool.Put(bufferPtr)
+					return ctx.Err()
+				case jobs <- chunkJob{index: chunkIndex, data: buffer[:bytesRead]}:
+					chunkIndex++
+				}
 			}
 			e.bufferPool.Put(bufferPtr)
 			break
@@ -258,52 +374,117 @@ func (e *Encryptor) readChunks(reader io.Reader, jobs chan<- chunkJob) {
 
 		if err != nil {
 			e.bufferPool.Put(bufferPtr)
-			break
+			return fmt.Errorf("read chunk: %w", err)
 		}
 
-		jobs <- chunkJob{index: chunkIndex, data: buffer[:bytesRead]}
-		chunkIndex++
-	}
-}
-
-// writeResults writes ciphertext chunks in order with bounded memory usage.
-//
-// This function maintains a pending map for out-of-order chunks and limits
-// the maximum pending size using e.maxPendingChunks to prevent memory exhaustion attacks.
-func (e *Encryptor) writeResults(results <-chan chunkResult, writer io.Writer) error {
-	expectedIndex := uint64(0)
-	pending := make(map[uint64][]byte)
-
-	for result := range results {
-		if len(pending) > e.maxPendingChunks {
-			return fmt.Errorf("too many pending chunks (limit %d) - possible reordering attack", e.maxPendingChunks)
+		select {
+		case <-ctx.Done():
+			e.bufferPool.Put(bufferPtr)
+			return ctx.Err()
+		case jobs <- chunkJob{index: chunkIndex, data: buffer[:bytesRead]}:
+			chunkIndex++
 		}
-
-		pending[result.index] = result.ciphertext
-
-		for {
-			ciphertext, exists := pending[expectedIndex]
-			if !exists {
-				break
-			}
-
-			chunkLen := uint32(len(ciphertext))
-			if err := binary.Write(writer, binary.BigEndian, chunkLen); err != nil {
-				return fmt.Errorf("write chunk length: %w", err)
-			}
-
-			if _, err := writer.Write(ciphertext); err != nil {
-				return fmt.Errorf("write ciphertext: %w", err)
-			}
-
-			delete(pending, expectedIndex)
-			expectedIndex++
-		}
-	}
-
-	if len(pending) > 0 {
-		return fmt.Errorf("missing chunks: expected index %d, have %d pending", expectedIndex, len(pending))
 	}
 
 	return nil
+}
+
+// writeResultsWithContext writes ciphertext chunks in order with context support.
+//
+// Parameters:
+//   - ctx: Context for cancellation
+//   - results: Channel receiving encrypted chunks
+//   - writer: Destination for encrypted data
+//
+// Returns:
+//   - error: If chunk reordering is detected or writing fails
+//
+// The function buffers out-of-order chunks and writes them sequentially.
+// A pending chunk limit prevents memory exhaustion attacks.
+func (e *Encryptor) writeResultsWithContext(ctx context.Context, results <-chan chunkResult, writer io.Writer) error {
+	expectedIndex := uint64(0)
+	pending := make(map[uint64][]byte)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case result, ok := <-results:
+			if !ok {
+				if len(pending) > 0 {
+					return fmt.Errorf("missing chunks: expected index %d, have %d pending", expectedIndex, len(pending))
+				}
+				return nil
+			}
+
+			if len(pending) > e.maxPendingChunks {
+				return fmt.Errorf("too many pending chunks (limit %d) - possible reordering attack", e.maxPendingChunks)
+			}
+
+			pending[result.index] = result.ciphertext
+
+			for {
+				ciphertext, exists := pending[expectedIndex]
+				if !exists {
+					break
+				}
+
+				chunkLen := uint32(len(ciphertext))
+				if err := binary.Write(writer, binary.BigEndian, chunkLen); err != nil {
+					return fmt.Errorf("write chunk length: %w", err)
+				}
+
+				if _, err := writer.Write(ciphertext); err != nil {
+					return fmt.Errorf("write ciphertext: %w", err)
+				}
+
+				delete(pending, expectedIndex)
+				expectedIndex++
+			}
+		}
+	}
+}
+
+// clampWorkers ensures the worker count is within acceptable bounds.
+func clampWorkers(workers int) int {
+	if workers <= 0 {
+		workers = DefaultWorkers
+	}
+	maxWorkers := runtime.NumCPU() * 2
+	if workers > maxWorkers {
+		workers = maxWorkers
+	}
+	return workers
+}
+
+// clampChunkSize ensures the chunk size is within acceptable bounds.
+func clampChunkSize(chunkSize int) int {
+	if chunkSize <= 0 {
+		chunkSize = DefaultChunkSize
+	}
+	if chunkSize < header.MinChunkSize {
+		chunkSize = header.MinChunkSize
+	}
+	if chunkSize > header.MaxChunkSize {
+		chunkSize = header.MaxChunkSize
+	}
+	return chunkSize
+}
+
+// clampMaxPending ensures the max pending chunks count is within acceptable bounds.
+func clampMaxPending(maxPending int) int {
+	if maxPending <= 0 {
+		maxPending = DefaultMaxPendingChunks
+	}
+	if maxPending > MaxMaxPendingChunks {
+		maxPending = MaxMaxPendingChunks
+	}
+	return maxPending
+}
+
+// closeWithErrorHandler closes a file and updates the error reference if closing fails.
+func closeWithErrorHandler(f *os.File, err *error, context string) {
+	if closeErr := f.Close(); closeErr != nil && *err == nil {
+		*err = fmt.Errorf("%s: %w", context, closeErr)
+	}
 }

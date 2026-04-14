@@ -107,7 +107,7 @@ func runEncrypt(cmd *cobra.Command, args []string) error {
 
 	// Resolve password (prompt if not provided via flag)
 	// For encryption, needConfirmation=true to require password confirmation
-	password, err := resolvePassword(GlobalConfig.Pass, true)
+	password, err := ResolvePassword(GlobalConfig.Pass, true)
 	if err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
 		return err

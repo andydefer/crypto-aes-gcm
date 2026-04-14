@@ -10,7 +10,10 @@ package service
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
+
+	"github.com/andydefer/crypto-aes-gcm/pkg/cryptolib"
 )
 
 // TestCheckOverwriteWithForce verifies that CheckOverwrite bypasses confirmation
@@ -45,10 +48,10 @@ func TestCheckOverwriteWithNonExistentFile(t *testing.T) {
 // count at 2× the number of CPU cores to prevent resource exhaustion.
 func TestValidateWorkerCountMax(t *testing.T) {
 	result := ValidateWorkerCount(9999, true)
-	maxWorkers := 16
+	expectedMax := runtime.NumCPU() * 2
 
-	if result > maxWorkers {
-		t.Errorf("ValidateWorkerCount returned %d, should be capped at %d", result, maxWorkers)
+	if result > expectedMax {
+		t.Errorf("ValidateWorkerCount returned %d, should be capped at %d", result, expectedMax)
 	}
 
 	if result < 1 {
@@ -59,7 +62,7 @@ func TestValidateWorkerCountMax(t *testing.T) {
 // TestValidateWorkerCountDefault verifies that ValidateWorkerCount returns the
 // default worker count when given invalid input values (zero or negative).
 func TestValidateWorkerCountDefault(t *testing.T) {
-	defaultWorkers := 4
+	defaultWorkers := cryptolib.DefaultWorkers
 
 	result := ValidateWorkerCount(0, true)
 	if result != defaultWorkers {

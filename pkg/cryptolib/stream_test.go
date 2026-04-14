@@ -110,9 +110,13 @@ func TestDecryptStream_CorruptedData(t *testing.T) {
 	}
 
 	encryptedData := encryptedBuf.Bytes()
-	if len(encryptedData) > 100 {
-		encryptedData[100] ^= 0xFF
+
+	// ✅ Vérification que la donnée est assez longue pour être corrompue
+	if len(encryptedData) < 100 {
+		t.Skip("encrypted data too short for corruption test")
 	}
+
+	encryptedData[100] ^= 0xFF
 
 	var decryptedBuf bytes.Buffer
 	corruptedReader := bytes.NewReader(encryptedData)
