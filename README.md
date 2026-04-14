@@ -2,7 +2,7 @@
 
 [![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-199%20passed-brightgreen.svg)](.)
+[![Tests](https://img.shields.io/badge/tests-200%20passed-brightgreen.svg)](.)
 [![Cobra](https://img.shields.io/badge/cli-cobra-blue)](https://github.com/spf13/cobra)
 [![GoDoc](https://godoc.org/github.com/andydefer/crypto-aes-gcm?status.svg)](https://godoc.org/github.com/andydefer/crypto-aes-gcm)
 
@@ -34,25 +34,25 @@ Un outil de chiffrement sécurisé et performant utilisant **AES-256-GCM** en mo
 git clone https://github.com/andydefer/crypto-aes-gcm.git
 cd crypto-aes-gcm
 make build
-sudo cp build/cryptool /usr/local/bin/
+sudo cp build/aescryptool /usr/local/bin/
 
 # Ou télécharger le binaire (releases)
-wget https://github.com/andydefer/crypto-aes-gcm/releases/latest/download/cryptool-linux-amd64
-chmod +x cryptool-linux-amd64
-sudo mv cryptool-linux-amd64 /usr/local/bin/cryptool
+wget https://github.com/andydefer/crypto-aes-gcm/releases/latest/download/aescryptool-linux-amd64
+chmod +x aescryptool-linux-amd64
+sudo mv aescryptool-linux-amd64 /usr/local/bin/aescryptool
 ```
 
 ### Windows
 
 ```powershell
-# Télécharger cryptool-windows-amd64.exe
+# Télécharger aescryptool-windows-amd64.exe
 # Le placer dans C:\Windows\System32\
 ```
 
 ### Vérifier l'installation
 
 ```bash
-cryptool version
+aescryptool version
 ```
 
 ## 🎮 Mode interactif
@@ -60,7 +60,7 @@ cryptool version
 Le mode interactif guide l'utilisateur étape par étape sans mémoriser les options :
 
 ```bash
-cryptool interact
+aescryptool interact
 ```
 
 ### Menu interactif :
@@ -115,7 +115,7 @@ cryptool interact
 
 ```bash
 # Lance le mode interactif avec prompts guidés
-cryptool interact
+aescryptool interact
 ```
 
 ### Mode non-interactif (CLI classique)
@@ -124,16 +124,16 @@ Le flag `--pass` est désormais **optionnel**. Si omis, le mot de passe est dema
 
 ```bash
 # Avec prompt interactif (recommandé)
-cryptool encrypt monfichier.txt monfichier.enc
-cryptool decrypt monfichier.enc monfichier.txt
+aescryptool encrypt monfichier.txt monfichier.enc
+aescryptool decrypt monfichier.enc monfichier.txt
 
 # Avec flag --pass (pour scripts/automatisation)
-cryptool encrypt monfichier.txt monfichier.enc --pass "monMotDePasse"
-cryptool decrypt monfichier.enc monfichier.txt --pass "monMotDePasse"
+aescryptool encrypt monfichier.txt monfichier.enc --pass "monMotDePasse"
+aescryptool decrypt monfichier.enc monfichier.txt --pass "monMotDePasse"
 
 # Aide
-cryptool --help
-cryptool encrypt --help
+aescryptool --help
+aescryptool encrypt --help
 ```
 
 ## Options importantes
@@ -151,13 +151,13 @@ cryptool encrypt --help
 
 ```bash
 # Recommandé - avec prompt interactif
-cryptool encrypt declaration-2024.pdf declaration-2024.pdf.enc
+aescryptool encrypt declaration-2024.pdf declaration-2024.pdf.enc
 
 # Pour scripts - avec flag --pass
-cryptool encrypt declaration-2024.pdf declaration-2024.pdf.enc --pass "MotDePasseFort123!"
+aescryptool encrypt declaration-2024.pdf declaration-2024.pdf.enc --pass "MotDePasseFort123!"
 
 # Mode interactif complet
-cryptool interact
+aescryptool interact
 # → Choisir "Chiffrer" → suivre les invites
 ```
 
@@ -165,20 +165,20 @@ cryptool interact
 
 ```bash
 # Avec optimisation parallèle (8 workers) et prompt interactif
-cryptool encrypt video.mp4 video.mp4.enc --workers 8
+aescryptool encrypt video.mp4 video.mp4.enc --workers 8
 
 # Avec flag --pass pour scripts
-cryptool encrypt video.mp4 video.mp4.enc --pass "Vacances2024!" --workers 8
+aescryptool encrypt video.mp4 video.mp4.enc --pass "Vacances2024!" --workers 8
 ```
 
 ### 📦 Chiffrement de dossier
 
 ```bash
 # Compresser + chiffrer (avec prompt)
-tar czf - dossier/ | cryptool encrypt /dev/stdin backup.enc
+tar czf - dossier/ | aescryptool encrypt /dev/stdin backup.enc
 
 # Déchiffrer + décompresser (avec prompt)
-cryptool decrypt backup.enc /dev/stdout | tar xzf -
+aescryptool decrypt backup.enc /dev/stdout | tar xzf -
 ```
 
 ## Dépannage rapide
@@ -220,7 +220,7 @@ Lorsque vous chiffrez un fichier sans utiliser le flag `--pass`, le mode interac
 ```
 crypto-aes-gcm/
 ├── cmd/
-│   └── cryptool/           # Application CLI (Cobra)
+│   └── aescryptool/           # Application CLI (Cobra)
 │       ├── main.go         # Point d'entrée (bootstrap pur)
 │       └── main_test.go    # Tests unitaires
 ├── internal/
@@ -270,7 +270,7 @@ make build
 make test
 
 # Installation locale
-go install ./cmd/cryptool
+go install ./cmd/aescryptool
 ```
 
 ## API Reference

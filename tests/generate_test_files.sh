@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script de génération des fichiers de test pour cryptool
+# Script de génération des fichiers de test pour aescryptool
 # Usage: ./generate_test_files.sh [--short]
 
 # Couleurs
@@ -63,7 +63,7 @@ generate_files() {
 ║                          CRYPTOOL TEST FILE v1.0                               ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 
-Ce fichier est utilisé pour tester les fonctionnalités de base de cryptool.
+Ce fichier est utilisé pour tester les fonctionnalités de base de aescryptool.
 
 🔐 CRYPTOOL est un outil de chiffrement sécurisé utilisant :
   • AES-256-GCM pour le chiffrement
@@ -81,7 +81,7 @@ Ce fichier est utilisé pour tester les fonctionnalités de base de cryptool.
 ═══════════════════════════════════════════════════════════════════════════════
 
 ENGLISH SECTION:
-This file is used to test the basic functionalities of cryptool.
+This file is used to test the basic functionalities of aescryptool.
 
 CRYPTOOL is a secure encryption tool using:
   • AES-256-GCM for encryption
@@ -100,16 +100,16 @@ LINE 25: Test line for chunk boundary verification
 LINE 26: Another test line to ensure streaming works correctly
 LINE 27: This file should be small enough for quick tests
 LINE 28: But large enough to test multiple chunks if chunk size is small
-LINE 29: End of test file - cryptool encryption verification
+LINE 29: End of test file - aescryptool encryption verification
 EOF
 
     # 2. Fichier JSON (config)
     print_info "  → config.json (1KB)"
     cat > "$INPUT_DIR/config.json" << 'EOF'
 {
-    "cryptool_test": {
+    "aesaescryptool_test": {
         "version": "2.0.0",
-        "description": "Test configuration file for cryptool",
+        "description": "Test configuration file for aescryptool",
         "encryption": {
             "algorithm": "AES-256-GCM",
             "key_derivation": "Argon2id",
@@ -161,10 +161,10 @@ EOF
     print_info "  → data.xml (1KB)"
     cat > "$INPUT_DIR/data.xml" << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
-<cryptool_tests>
+<aesaescryptool_tests>
     <metadata>
         <generated_at>2024-01-01T00:00:00Z</generated_at>
-        <tool>cryptool-test-generator</tool>
+        <tool>aescryptool-test-generator</tool>
         <version>2.0.0</version>
     </metadata>
 
@@ -216,7 +216,7 @@ EOF
             <description>Verify GCM authentication per chunk</description>
         </test_case>
     </test_suite>
-</cryptool_tests>
+</aesaescryptool_tests>
 EOF
 
     # 4. Fichier avec caractères spéciaux
@@ -328,7 +328,7 @@ EOF
     print_info "  → test_script.sh"
     cat > "$INPUT_DIR/test_script.sh" << 'EOF'
 #!/bin/bash
-# Test script for cryptool
+# Test script for aescryptool
 echo "This is a test script"
 echo "It should be encrypted and decrypted"
 for i in {1..10}; do

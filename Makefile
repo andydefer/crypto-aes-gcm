@@ -8,7 +8,7 @@
 SOURCE_DIRS = src config database tests pkg cmd internal
 IGNORED_FILES = CHANGED_FILES.md FILES_CHECKLIST.md Makefile .gitkeep
 IGNORED_EXTENSIONS = .bin .exe .enc .jpg .png .pdf .zip .tar .gz .so .dll .o .a
-IGNORED_FILES_PATTERNS = cryptool cryptool-* test.enc test.bin all.txt
+IGNORED_FILES_PATTERNS = aescryptool aescryptool-* test.enc test.bin all.txt
 
 # ---------------------------------------------------
 # Directories
@@ -104,7 +104,7 @@ generate-ai-diff:
 		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
 		echo "Voici le diff :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
 		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
-		git diff HEAD -- . ':!*.phpunit.result.cache' ':!$(PRIVATE_DIR)/*' ':!*.enc' ':!*.bin' ':!cryptool*' ':!build/*' ':!tests/test_data/*' >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		git diff HEAD -- . ':!*.phpunit.result.cache' ':!$(PRIVATE_DIR)/*' ':!*.enc' ':!*.bin' ':!aescryptool*' ':!build/*' ':!tests/test_data/*' >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
 		echo "✅ Clean diff generated successfully: $(DIFF_DIR)/diff_$${timestamp}.txt"; \
 	else \
 		echo "📝 Generating clean git diff for paths: $${DIR_PATHS} into $(DIFF_DIR)/diff_$${timestamp}.txt..."; \
@@ -152,7 +152,7 @@ generate-ai-diff:
 		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
 		echo "Voici le diff :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
 		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
-		git diff HEAD -- $$DIR_PATHS ':!*.phpunit.result.cache' ':!$(PRIVATE_DIR)/*' ':!*.enc' ':!*.bin' ':!cryptool*' ':!build/*' ':!tests/test_data/*' >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		git diff HEAD -- $$DIR_PATHS ':!*.phpunit.result.cache' ':!$(PRIVATE_DIR)/*' ':!*.enc' ':!*.bin' ':!aescryptool*' ':!build/*' ':!tests/test_data/*' >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
 		echo "✅ Clean diff generated successfully: $(DIFF_DIR)/diff_$${timestamp}.txt"; \
 	fi
 
@@ -199,8 +199,8 @@ concat-all:
 				-not -name "*.dll" \
 				-not -name "*.o" \
 				-not -name "*.a" \
-				-not -name "cryptool" \
-				-not -name "cryptool-*" \
+				-not -name "aescryptool" \
+				-not -name "aescryptool-*" \
 				-not -name "test.enc" \
 				-not -name "test.bin" \
 				-not -name "all.txt" \
@@ -236,7 +236,7 @@ clean-private:
 .PHONY: clean-all
 clean-all: clean
 	@echo "🧹 Cleaning all generated files..."
-	@rm -f cryptool cryptool-*
+	@rm -f aescryptool aescryptool-*
 	@rm -rf $(PRIVATE_DIR)
 	@rm -rf build
 	@echo "✅ Deep clean completed"
@@ -257,11 +257,11 @@ release:
 
 .PHONY: build
 build:
-	@echo "🔨 Building cryptool for current platform..."
+	@echo "🔨 Building aescryptool for current platform..."
 	@mkdir -p build
-	@go build -o build/cryptool ./cmd/cryptool
-	@chmod +x build/cryptool
-	@echo "✅ Build completed: build/cryptool"
+	@go build -o build/aescryptool ./cmd/aescryptool
+	@chmod +x build/aescryptool
+	@echo "✅ Build completed: build/aescryptool"
 
 .PHONY: build-all
 build-all:
@@ -269,22 +269,84 @@ build-all:
 	@mkdir -p build
 
 	@echo "  📦 Building for Linux (amd64)..."
-	@GOOS=linux GOARCH=amd64 go build -o build/cryptool-linux-amd64 ./cmd/cryptool && chmod +x build/cryptool-linux-amd64
+	@GOOS=linux GOARCH=amd64 go build -o build/aescryptool-linux-amd64 ./cmd/aescryptool && chmod +x build/aescryptool-linux-amd64
 
 	@echo "  📦 Building for Windows (amd64)..."
-	@GOOS=windows GOARCH=amd64 go build -o build/cryptool-windows-amd64.exe ./cmd/cryptool
+	@GOOS=windows GOARCH=amd64 go build -o build/aescryptool-windows-amd64.exe ./cmd/aescryptool
 
 	@echo "  📦 Building for macOS Intel (amd64)..."
-	@GOOS=darwin GOARCH=amd64 go build -o build/cryptool-darwin-amd64 ./cmd/cryptool && chmod +x build/cryptool-darwin-amd64
+	@GOOS=darwin GOARCH=amd64 go build -o build/aescryptool-darwin-amd64 ./cmd/aescryptool && chmod +x build/aescryptool-darwin-amd64
 
 	@echo "  📦 Building for macOS Apple Silicon (arm64)..."
-	@GOOS=darwin GOARCH=arm64 go build -o build/cryptool-darwin-arm64 ./cmd/cryptool && chmod +x build/cryptool-darwin-arm64
+	@GOOS=darwin GOARCH=arm64 go build -o build/aescryptool-darwin-arm64 ./cmd/aescryptool && chmod +x build/aescryptool-darwin-arm64
 
 	@echo "  📦 Building for Linux (arm64)..."
-	@GOOS=linux GOARCH=arm64 go build -o build/cryptool-linux-arm64 ./cmd/cryptool && chmod +x build/cryptool-linux-arm64
+	@GOOS=linux GOARCH=arm64 go build -o build/aescryptool-linux-arm64 ./cmd/aescryptool && chmod +x build/aescryptool-linux-arm64
 
 	@echo "✅ Build completed for all platforms"
-	@ls -lh build/cryptool-* 2>/dev/null || true
+	@ls -lh build/aescryptool-* 2>/dev/null || true
+
+# ---------------------------------------------------
+# Install Commands
+# ---------------------------------------------------
+
+.PHONY: install
+install: build
+	@echo "📦 Installing aescryptool globally..."
+	@if [ ! -f build/aescryptool ]; then \
+		echo "❌ Build file not found. Run 'make build' first."; \
+		exit 1; \
+	fi
+	@sudo cp build/aescryptool /usr/local/bin/
+	@sudo chmod +x /usr/local/bin/aescryptool
+	@echo "✅ aescryptool installed to /usr/local/bin/aescryptool"
+	@echo "📍 You can now run 'aescryptool' from anywhere"
+	@aescryptool version 2>/dev/null && echo "🎉 Installation verified!" || echo "⚠️  Please restart your terminal or run: source ~/.bashrc"
+
+.PHONY: install-local
+install-local: build
+	@echo "📦 Installing aescryptool locally (user only)..."
+	@mkdir -p ~/.local/bin
+	@cp build/aescryptool ~/.local/bin/
+	@chmod +x ~/.local/bin/aescryptool
+	@echo "✅ aescryptool installed to ~/.local/bin/aescryptool"
+	@echo ""
+	@echo "📍 Make sure ~/.local/bin is in your PATH"
+	@echo "   Add this to your ~/.bashrc or ~/.zshrc:"
+	@echo "   export PATH=\$$HOME/.local/bin:\$$PATH"
+	@echo ""
+	@echo "   Then run: source ~/.bashrc (or restart terminal)"
+	@echo ""
+	@if echo "$$PATH" | grep -q "$$HOME/.local/bin"; then \
+		echo "✅ ~/.local/bin already in PATH"; \
+		aescryptool version 2>/dev/null && echo "🎉 Installation verified!"; \
+	else \
+		echo "⚠️  ~/.local/bin not in PATH. Please add it as shown above."; \
+	fi
+
+.PHONY: uninstall
+uninstall:
+	@echo "🗑️  Removing aescryptool from system..."
+	@sudo rm -f /usr/local/bin/aescryptool
+	@rm -f ~/.local/bin/aescryptool
+	@echo "✅ aescryptool removed from system"
+
+.PHONY: reinstall
+reinstall: uninstall install
+	@echo "🔄 aescryptool reinstalled successfully"
+
+.PHONY: install-check
+install-check:
+	@echo "🔍 Checking if aescryptool is installed..."
+	@if which aescryptool 2>/dev/null; then \
+		echo "✅ aescryptool found: $$(which aescryptool)"; \
+		echo ""; \
+		aescryptool version; \
+	else \
+		echo "❌ aescryptool not found in PATH"; \
+		echo ""; \
+		echo "💡 Install it with: make install (global) or make install-local (user)"; \
+	fi
 
 # ---------------------------------------------------
 # Run Commands (Direct execution without building)
@@ -292,8 +354,8 @@ build-all:
 
 .PHONY: run
 run:
-	@echo "🚀 Running cryptool directly..."
-	@go run ./cmd/cryptool $(ARGS)
+	@echo "🚀 Running aescryptool directly..."
+	@go run ./cmd/aescryptool $(ARGS)
 
 .PHONY: run-encrypt
 run-encrypt:
@@ -313,7 +375,7 @@ run-encrypt:
 		echo "Usage: make run-encrypt INPUT=file.txt OUTPUT=file.enc PASS=password"; \
 		exit 1; \
 	fi
-	@go run ./cmd/cryptool encrypt $(INPUT) $(OUTPUT) --pass $(PASS) $(WORKERS) $(FORCE) $(QUIET)
+	@go run ./cmd/aescryptool encrypt $(INPUT) $(OUTPUT) --pass $(PASS) $(WORKERS) $(FORCE) $(QUIET)
 
 .PHONY: run-decrypt
 run-decrypt:
@@ -333,17 +395,17 @@ run-decrypt:
 		echo "Usage: make run-decrypt INPUT=file.enc OUTPUT=file.txt PASS=password"; \
 		exit 1; \
 	fi
-	@go run ./cmd/cryptool decrypt $(INPUT) $(OUTPUT) --pass $(PASS) $(WORKERS) $(FORCE) $(QUIET)
+	@go run ./cmd/aescryptool decrypt $(INPUT) $(OUTPUT) --pass $(PASS) $(WORKERS) $(FORCE) $(QUIET)
 
 .PHONY: run-interact
 run-interact:
 	@echo "🎮 Running interactive mode..."
-	@go run ./cmd/cryptool interact
+	@go run ./cmd/aescryptool interact
 
 .PHONY: run-version
 run-version:
 	@echo "📦 Showing version..."
-	@go run ./cmd/cryptool version
+	@go run ./cmd/aescryptool version
 
 # ---------------------------------------------------
 # Test Commands
@@ -514,7 +576,7 @@ clean-all-tests: clean-test-data
 
 .PHONY: help
 help:
-	@echo "📚 CRYPTOOL - Available commands"
+	@echo "📚 AESCRYPTOOL - Available commands"
 	@echo ""
 	@echo "🚀 RUN (Direct execution without building)"
 	@echo "  make run-interact              Run interactive mode (prompts for all inputs)"
@@ -531,8 +593,15 @@ help:
 	@echo "    make run ARGS=\"encrypt test.txt test.enc --pass mypassword --force\""
 	@echo ""
 	@echo "🔨 BUILD"
-	@echo "  make build                     Build cryptool for current platform"
-	@echo "  make build-all                 Build cryptool for all platforms (Linux, Windows, macOS)"
+	@echo "  make build                     Build aescryptool for current platform"
+	@echo "  make build-all                 Build aescryptool for all platforms (Linux, Windows, macOS)"
+	@echo ""
+	@echo "📦 INSTALLATION"
+	@echo "  make install                   Install aescryptool globally (/usr/local/bin)"
+	@echo "  make install-local             Install aescryptool locally (~/.local/bin)"
+	@echo "  make uninstall                 Remove aescryptool from system"
+	@echo "  make reinstall                 Reinstall aescryptool (uninstall + install)"
+	@echo "  make install-check             Check if aescryptool is properly installed"
 	@echo ""
 	@echo "🧪 GO TESTS"
 	@echo "  make test                      Run all Go tests"

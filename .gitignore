@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-cryptool-*
+aescryptool-*
 *.test
 *.out
 
@@ -79,9 +79,9 @@ diff/
 *.old
 
 # Project specific
-cryptool-linux-*
-cryptool-windows-*
-cryptool-darwin-*
+aescryptool-linux-*
+aescryptool-windows-*
+aescryptool-darwin-*
 coverage.out
 coverage.html
 

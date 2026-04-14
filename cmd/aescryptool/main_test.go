@@ -1,4 +1,4 @@
-// Package main provides the entry point tests for cryptool CLI.
+// Package main provides the entry point tests for aescryptool CLI.
 package main
 
 import (

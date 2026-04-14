@@ -1,6 +1,6 @@
-// Package cli provides the command-line interface for cryptool.
+// Package cli provides the command-line interface for aescryptool.
 //
-// It implements the decrypt command for decrypting files encrypted with cryptool.
+// It implements the decrypt command for decrypting files encrypted with aescryptool.
 // The command handles argument parsing, validation, and delegates the actual
 // decryption work to the service layer.
 package cli
@@ -47,10 +47,10 @@ Password can be provided via:
   - Interactive prompt (recommended for manual use)
 
 Examples:
-  cryptool decrypt secret.enc secret.txt              # Prompts for password
-  cryptool decrypt secret.enc secret.txt --pass myPassword
-  cryptool decrypt data.enc output.txt --pass secure123 --force
-  cryptool decrypt large.enc result.bin --workers 8 --quiet`,
+  aescryptool decrypt secret.enc secret.txt              # Prompts for password
+  aescryptool decrypt secret.enc secret.txt --pass myPassword
+  aescryptool decrypt data.enc output.txt --pass secure123 --force
+  aescryptool decrypt large.enc result.bin --workers 8 --quiet`,
 		Args: cobra.ExactArgs(2),
 		RunE: runDecrypt,
 	}

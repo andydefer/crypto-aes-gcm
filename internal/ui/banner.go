@@ -1,4 +1,4 @@
-// Package ui provides terminal user interface components for cryptool.
+// Package ui provides terminal user interface components for aesaesaescryptool.
 //
 // This package handles all user-facing output including:
 //   - Colored banners and headers for different operation modes
@@ -27,7 +27,7 @@ func PrintInteractiveHeader() {
 	HeaderColor.Printf(`
 ╔════════════════════════════════════════════════════════════════════╗
 ║                                                                    ║
-║                    🎮 CRYPTOOL - MODE INTERACTIF                   ║
+║                 🎮 AESCRYPTOOL - MODE INTERACTIF                   ║
 ║                                                                    ║
 ║  Suivez les invites pour chiffrer ou déchiffrer vos fichiers       ║
 ║  Toutes les entrées seront validées avant exécution                ║
@@ -72,7 +72,7 @@ func PrintInteractiveGoodbye() {
 	SuccessColor.Printf(`
 ╔════════════════════════════════════════════════════════════════════╗
 ║                                                                    ║
-║              👋 Merci d'avoir utilisé CRYPTOOL !                   ║
+║              👋 Merci d'avoir utilisé AESCRYPTOOL !                ║
 ║                                                                    ║
 ║              À bientôt pour vos prochains chiffrements !           ║
 ║                                                                    ║

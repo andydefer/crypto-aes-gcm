@@ -1,4 +1,4 @@
-// Package cli provides the command-line interface for cryptool.
+// Package cli provides the command-line interface for aesaesaescryptool.
 package cli
 
 import (
@@ -10,49 +10,66 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewVersionCmd creates the version command.
-//
-// This command displays version information including:
-//   - Application name and version (v2.0.0)
-//   - Cryptographic algorithms used (AES-256-GCM, Argon2id, Parallel)
-//   - Go build version
-//   - Operating system and architecture
-//   - Number of available CPU cores
-//
-// Returns:
-//   - *cobra.Command: Configured Cobra command that prints version info
+const (
+	appName     = "AESCRYPTOOL"
+	appVersion  = "v2.0.0"
+	cryptoAlgos = "AES-256-GCM | Argon2id | Parallel"
+)
+
+// NewVersionCmd creates and returns the version command.
 func NewVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Show version information",
-		Long:  "Display cryptool version, build information, and system details",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			printVersionToWriter(cmd.OutOrStdout())
+		Long:  "Display aesaesaescryptool version, build information, and system details",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			printVersion(cmd.OutOrStdout())
 			return nil
 		},
 	}
 }
 
-// printVersionToWriter displays the version banner and system information
-// to the specified writer.
-func printVersionToWriter(w io.Writer) {
-	// Use color.New with the specific writer for colored output
+// printVersion writes the version banner and system information to w.
+func printVersion(w io.Writer) {
+	printBanner(w)
+	printBuildInfo(w)
+}
+
+// printBanner writes the ASCII art banner to w.
+func printBanner(w io.Writer) {
 	headerColor := color.New(color.FgMagenta, color.Bold)
 	headerColor.SetWriter(w)
 
-	header := `
-╔═══════════════════════════════════════╗
-║  🔐 CRYPTOOL - AES-GCM v2.0.0         ║
-║  AES-256-GCM | Argon2id | Parallel    ║
-╚═══════════════════════════════════════╝
-`
-	headerColor.Fprint(w, header)
+	line := "════════════════════════════════════════"
 
+	banner := fmt.Sprintf(`
+╔%s╗
+║  🔐 %s - %s ║
+║  %s ║
+╚%s╝
+`,
+		line,
+		appName,
+		appVersion,
+		cryptoAlgos,
+		line,
+	)
+
+	headerColor.Fprint(w, banner)
+}
+
+// printBuildInfo writes the runtime and system information to w.
+func printBuildInfo(w io.Writer) {
 	infoColor := color.New(color.FgCyan, color.Bold)
 	infoColor.SetWriter(w)
 
-	info := fmt.Sprintf("\n  📦 Build: %s\n  🖥️  OS/Arch: %s/%s\n  💻 CPUs: %d\n\n",
-		runtime.Version(), runtime.GOOS, runtime.GOARCH, runtime.NumCPU())
+	info := fmt.Sprintf(
+		"\n  📦 Build: %s\n  🖥️  OS/Arch: %s/%s\n  💻 CPUs: %d\n\n",
+		runtime.Version(),
+		runtime.GOOS,
+		runtime.GOARCH,
+		runtime.NumCPU(),
+	)
 
 	infoColor.Fprint(w, info)
 }

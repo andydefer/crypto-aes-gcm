@@ -1,4 +1,4 @@
-// Package cli provides the command-line interface for cryptool.
+// Package cli provides the command-line interface for aescryptool.
 //
 // It implements the Cobra commands for encryption, decryption, interactive mode,
 // and version display. The package handles flag parsing, validation, and
@@ -299,7 +299,7 @@ func TestRootCmdVersion(t *testing.T) {
 func TestRootCmdHelpText(t *testing.T) {
 	// Create a new root command for testing to avoid affecting other tests
 	testRoot := &cobra.Command{
-		Use: "cryptool",
+		Use: "aescryptool",
 	}
 
 	// Add subcommands

@@ -1,6 +1,6 @@
 // Package ui provides terminal user interface utilities.
 //
-// This package contains UI components for the cryptool CLI including:
+// This package contains UI components for the aescryptool CLI including:
 //   - Colorized output for different message types (info, success, error, warning)
 //   - Progress bars for long-running operations
 //   - Interactive prompts for file paths, passwords, and user confirmations

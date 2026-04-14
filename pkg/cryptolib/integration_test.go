@@ -290,7 +290,7 @@ func TestEncryptionDeterminism(t *testing.T) {
 	}
 }
 
-// TestCLIBinary verifies that the compiled cryptool binary works correctly.
+// TestCLIBinary verifies that the compiled aescryptool binary works correctly.
 //
 // This test checks that:
 //   - The `version` command produces output
@@ -301,7 +301,7 @@ func TestEncryptionDeterminism(t *testing.T) {
 func TestCLIBinary(t *testing.T) {
 	binaryPath := findBinary(t)
 	if binaryPath == "" {
-		t.Skip("cryptool binary not found, run 'make build' first")
+		t.Skip("aescryptool binary not found, run 'make build' first")
 	}
 
 	t.Run("version", func(t *testing.T) {
@@ -348,7 +348,7 @@ func TestCLIBinary(t *testing.T) {
 func TestEndToEndEncryptionDecryption(t *testing.T) {
 	binaryPath := findBinary(t)
 	if binaryPath == "" {
-		t.Skip("cryptool binary not found, run 'make build' first")
+		t.Skip("aescryptool binary not found, run 'make build' first")
 	}
 
 	tempDir := t.TempDir()
@@ -357,7 +357,7 @@ func TestEndToEndEncryptionDecryption(t *testing.T) {
 	decryptedFile := filepath.Join(tempDir, "decrypted.txt")
 	password := "e2e-test-password-123"
 
-	testContent := []byte("This is end-to-end test content for cryptool integration testing.")
+	testContent := []byte("This is end-to-end test content for aescryptool integration testing.")
 	if err := os.WriteFile(inputFile, testContent, 0644); err != nil {
 		t.Fatalf("failed to create input file: %v", err)
 	}
@@ -400,7 +400,7 @@ func TestEndToEndEncryptionDecryption(t *testing.T) {
 func TestWrongPassword(t *testing.T) {
 	binaryPath := findBinary(t)
 	if binaryPath == "" {
-		t.Skip("cryptool binary not found, run 'make build' first")
+		t.Skip("aescryptool binary not found, run 'make build' first")
 	}
 
 	tempDir := t.TempDir()
@@ -445,7 +445,7 @@ func TestWrongPassword(t *testing.T) {
 func TestForceOverwrite(t *testing.T) {
 	binaryPath := findBinary(t)
 	if binaryPath == "" {
-		t.Skip("cryptool binary not found, run 'make build' first")
+		t.Skip("aescryptool binary not found, run 'make build' first")
 	}
 
 	tempDir := t.TempDir()
@@ -482,7 +482,7 @@ func TestLargeFile(t *testing.T) {
 
 	binaryPath := findBinary(t)
 	if binaryPath == "" {
-		t.Skip("cryptool binary not found, run 'make build' first")
+		t.Skip("aescryptool binary not found, run 'make build' first")
 	}
 
 	tempDir := t.TempDir()
@@ -527,7 +527,7 @@ func TestLargeFile(t *testing.T) {
 func TestConcurrentOperations(t *testing.T) {
 	binaryPath := findBinary(t)
 	if binaryPath == "" {
-		t.Skip("cryptool binary not found, run 'make build' first")
+		t.Skip("aescryptool binary not found, run 'make build' first")
 	}
 
 	tempDir := t.TempDir()
@@ -594,21 +594,21 @@ func TestConcurrentOperations(t *testing.T) {
 	}
 }
 
-// findBinary locates the compiled cryptool binary for CLI tests.
+// findBinary locates the compiled aescryptool binary for CLI tests.
 //
 // It searches common locations including:
-//   - ../build/cryptool (from test directory)
-//   - ../../build/cryptool (from deeper test directories)
-//   - ./cryptool (current directory)
-//   - cryptool (PATH)
+//   - ../build/aescryptool (from test directory)
+//   - ../../build/aescryptool (from deeper test directories)
+//   - ./aescryptool (current directory)
+//   - aescryptool (PATH)
 //
 // Returns an empty string if the binary is not found.
 func findBinary(t *testing.T) string {
 	locations := []string{
-		"../build/cryptool",
-		"../../build/cryptool",
-		"./cryptool",
-		"cryptool",
+		"../build/aescryptool",
+		"../../build/aescryptool",
+		"./aescryptool",
+		"aescryptool",
 	}
 
 	for _, loc := range locations {

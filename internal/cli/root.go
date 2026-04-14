@@ -1,4 +1,4 @@
-// Package cli provides the command-line interface for cryptool.
+// Package cli provides the command-line interface for aesaesaescryptool.
 //
 // It implements the Cobra-based CLI with support for encryption, decryption,
 // interactive mode, and version display. The package handles flag parsing,
@@ -20,25 +20,25 @@ var (
 
 // Execute runs the root command and returns any error encountered.
 //
-// This is the main entry point called from cmd/cryptool/main.go.
+// This is the main entry point called from cmd/aesaesaescryptool/main.go.
 // It parses command-line arguments, executes the appropriate command,
 // and returns an error that can be used to set the exit code.
 func Execute() error {
 	return rootCmd.Execute()
 }
 
-// rootCmd is the base command for cryptool.
+// rootCmd is the base command for aesaesaescryptool.
 //
 // It displays the application header and help information when called
 // without any subcommands.
 var rootCmd = &cobra.Command{
-	Use:   "cryptool",
+	Use:   "aesaesaescryptool",
 	Short: "🔐 Secure file encryption using AES-256-GCM",
 	Long: ui.HeaderColor.Sprint(`
 ╔══════════════════════════════════════════════════════════════╗
-║                    🔐 CRYPTOOL - AES-GCM                     ║
+║                 🔐 AESCRYPTOOL - AES-GCM                     ║
 ╚══════════════════════════════════════════════════════════════╝
-`) + "\n\n" + ui.InfoColor.Sprint("Usage:") + ` cryptool [command] [flags]
+`) + "\n\n" + ui.InfoColor.Sprint("Usage:") + ` aesaesaescryptool [command] [flags]
 
 Commands:
   encrypt   Encrypt a file
@@ -56,19 +56,19 @@ Password Management:
 
 Examples:
   # Encrypt with interactive password prompt (recommended)
-  cryptool encrypt secret.txt secret.enc
+  aesaesaescryptool encrypt secret.txt secret.enc
 
   # Decrypt with interactive password prompt (recommended)
-  cryptool decrypt secret.enc secret.txt
+  aesaesaescryptool decrypt secret.enc secret.txt
 
   # Encrypt with --pass flag (for scripts)
-  cryptool encrypt secret.txt secret.enc --pass "myPassword"
+  aesaesaescryptool encrypt secret.txt secret.enc --pass "myPassword"
 
   # With parallel processing (8 workers)
-  cryptool encrypt largefile.mp4 encrypted.enc --workers 8
+  aesaesaescryptool encrypt largefile.mp4 encrypted.enc --workers 8
 
   # Force overwrite without confirmation
-  cryptool encrypt data.txt data.enc --force
+  aesaesaescryptool encrypt data.txt data.enc --force
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

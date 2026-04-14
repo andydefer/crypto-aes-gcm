@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script de scénarios de test avancés pour cryptool
+# Script de scénarios de test avancés pour aescryptool
 # Usage: ./test_scenarios.sh [--short] [--verbose]
 
 # Couleurs
@@ -16,7 +16,7 @@ NC='\033[0m'
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-CRYPTOOL_BIN="$PROJECT_ROOT/build/cryptool"
+CRYPTOOL_BIN="$PROJECT_ROOT/build/aescryptool"
 TEST_DIR="$SCRIPT_DIR/test_data"
 INPUT_DIR="$TEST_DIR/input"
 ENCRYPTED_DIR="$TEST_DIR/encrypted"

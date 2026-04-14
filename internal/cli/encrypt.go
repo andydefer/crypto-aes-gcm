@@ -1,4 +1,4 @@
-// Package cli provides the command-line interface for cryptool.
+// Package cli provides the command-line interface for aescryptool.
 //
 // It implements the encrypt command for encrypting files using AES-256-GCM.
 // The command handles argument parsing, validation, and delegates the actual
@@ -47,10 +47,10 @@ Password can be provided via:
   - Interactive prompt (recommended for manual use)
 
 Examples:
-  cryptool encrypt secret.txt secret.enc              # Prompts for password
-  cryptool encrypt secret.txt secret.enc --pass myPassword
-  cryptool encrypt data.txt output.enc --pass secure123 --force
-  cryptool encrypt large.bin result.enc --workers 8 --quiet`,
+  aescryptool encrypt secret.txt secret.enc              # Prompts for password
+  aescryptool encrypt secret.txt secret.enc --pass myPassword
+  aescryptool encrypt data.txt output.enc --pass secure123 --force
+  aescryptool encrypt large.bin result.enc --workers 8 --quiet`,
 		Args: cobra.ExactArgs(2),
 		RunE: runEncrypt,
 	}

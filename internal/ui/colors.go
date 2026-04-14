@@ -1,4 +1,4 @@
-// Package ui provides terminal user interface utilities for cryptool.
+// Package ui provides terminal user interface utilities for aescryptool.
 //
 // This package centralizes all terminal UI concerns including:
 //   - Color management for consistent visual feedback

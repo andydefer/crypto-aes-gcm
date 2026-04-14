@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BUILD_DIR="$PROJECT_ROOT/build"
-CRYPTOOL_BIN="$BUILD_DIR/cryptool"
+CRYPTOOL_BIN="$BUILD_DIR/aescryptool"
 TEST_DIR="$SCRIPT_DIR/test_data"
 RESULT_DIR="$SCRIPT_DIR/results"
 
@@ -58,13 +58,13 @@ print_test_header() {
 }
 
 # Compilation du binaire
-build_cryptool() {
-    print_info "Compilation de cryptool..."
+build_aesaescryptool() {
+    print_info "Compilation de aescryptool..."
 
     mkdir -p "$BUILD_DIR"
     cd "$PROJECT_ROOT"
 
-    go build -o "$CRYPTOOL_BIN" ./cmd/cryptool
+    go build -o "$CRYPTOOL_BIN" ./cmd/aescryptool
 
     if [ $? -eq 0 ] && [ -f "$CRYPTOOL_BIN" ]; then
         print_success "Compilation réussie: $CRYPTOOL_BIN"
@@ -80,14 +80,14 @@ check_binary() {
     if [ ! -f "$CRYPTOOL_BIN" ]; then
         print_error "Binaire non trouvé: $CRYPTOOL_BIN"
         print_info "Lancement de la compilation..."
-        build_cryptool
+        build_aesaescryptool
         if [ $? -ne 0 ]; then
             return 1
         fi
     fi
 
     # Vérifier la version
-    print_info "Version de cryptool:"
+    print_info "Version de aescryptool:"
     "$CRYPTOOL_BIN" version
 
     return 0

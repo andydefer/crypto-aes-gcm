@@ -1,4 +1,4 @@
-// Package cli provides the interactive command for cryptool.
+// Package cli provides the interactive command for aescryptool.
 //
 // The interactive mode guides users through encryption and decryption operations
 // with step-by-step prompts, real-time validation, and visual feedback.
@@ -25,7 +25,7 @@ func NewInteractCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "interact",
 		Short: "🎮 Interactive mode",
-		Long:  "Run cryptool in interactive mode with guided prompts for all inputs",
+		Long:  "Run aescryptool in interactive mode with guided prompts for all inputs",
 		RunE:  runInteractive,
 	}
 }

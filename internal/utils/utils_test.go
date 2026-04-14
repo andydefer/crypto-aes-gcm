@@ -1,4 +1,4 @@
-// Package utils provides utility functions for cryptool.
+// Package utils provides utility functions for aescryptool.
 //
 // This package contains helper functions that are used across multiple
 // packages in the application, including:
