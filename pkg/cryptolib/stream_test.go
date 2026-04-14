@@ -235,5 +235,3 @@ func TestDecryptStream_ChunkBoundary(t *testing.T) {
 		t.Errorf("decrypted data mismatch across chunk boundaries")
 	}
 }
-
-// BenchmarkDecryptStream measures performance of streaming decryption.

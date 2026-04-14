@@ -12,7 +12,7 @@ import (
 
 // Global flags shared across all commands.
 var (
-	pass    string // Password for encryption/decryption
+	pass    string // Password for encryption/decryption (optional - will prompt if omitted)
 	workers int    // Number of parallel workers (encryption only)
 	force   bool   // Force overwrite existing output file
 	quiet   bool   // Suppress progress output
@@ -47,24 +47,28 @@ Commands:
   version   Show version information
   help      Display help about any command
 
+Password Management:
+  For both encrypt and decrypt commands, you can either:
+    - Provide --pass flag (visible in process list)
+    - Omit the flag and enter password interactively (recommended)
+
+  For encryption, interactive mode includes password confirmation and strength validation.
+
 Examples:
-  # Encrypt a file (non-interactive)
+  # Encrypt with interactive password prompt (recommended)
+  cryptool encrypt secret.txt secret.enc
+
+  # Decrypt with interactive password prompt (recommended)
+  cryptool decrypt secret.enc secret.txt
+
+  # Encrypt with --pass flag (for scripts)
   cryptool encrypt secret.txt secret.enc --pass "myPassword"
 
-  # Decrypt a file (non-interactive)
-  cryptool decrypt secret.enc output.txt --pass "myPassword"
-
-  # Interactive mode (guided prompts)
-  cryptool interact
-
   # With parallel processing (8 workers)
-  cryptool encrypt largefile.mp4 encrypted.enc --pass "secure" --workers 8
+  cryptool encrypt largefile.mp4 encrypted.enc --workers 8
 
   # Force overwrite without confirmation
-  cryptool encrypt data.txt data.enc --pass "pass" --force
-
-  # Silent mode (no progress bar)
-  cryptool encrypt log.txt log.enc --pass "secret" --quiet
+  cryptool encrypt data.txt data.enc --force
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

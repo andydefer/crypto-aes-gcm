@@ -56,8 +56,3 @@ func printVersionToWriter(w io.Writer) {
 
 	infoColor.Fprint(w, info)
 }
-
-// printVersion maintains backward compatibility for existing code
-func printVersion() {
-	printVersionToWriter(color.Output)
-}

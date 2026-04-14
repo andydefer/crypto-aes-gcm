@@ -10,6 +10,13 @@ import (
 	"testing"
 )
 
+// Size constants for human-readable byte values.
+const (
+	KB = 1024
+	MB = 1024 * KB
+	GB = 1024 * MB
+)
+
 // TestDefaultEncryptorConfig verifies that default configuration values are correct.
 func TestDefaultEncryptorConfig(t *testing.T) {
 	config := DefaultEncryptorConfig()
@@ -84,7 +91,7 @@ func TestNewEncryptorWithConfig_Clamping(t *testing.T) {
 			name: "negative chunk size uses default",
 			config: EncryptorConfig{
 				Workers:          DefaultWorkers,
-				ChunkSize:        -1024,
+				ChunkSize:        -KB,
 				MaxPendingChunks: DefaultMaxPendingChunks,
 			},
 			expectedWorker:  DefaultWorkers,
@@ -95,22 +102,22 @@ func TestNewEncryptorWithConfig_Clamping(t *testing.T) {
 			name: "too small chunk size clamped to min",
 			config: EncryptorConfig{
 				Workers:          DefaultWorkers,
-				ChunkSize:        512, // MinChunkSize is 1024
+				ChunkSize:        512, // MinChunkSize is KB (1024)
 				MaxPendingChunks: DefaultMaxPendingChunks,
 			},
 			expectedWorker:  DefaultWorkers,
-			expectedChunk:   1024,
+			expectedChunk:   KB,
 			expectedPending: DefaultMaxPendingChunks,
 		},
 		{
 			name: "too large chunk size clamped to max",
 			config: EncryptorConfig{
 				Workers:          DefaultWorkers,
-				ChunkSize:        2 * 1024 * 1024 * 1024, // 2GB > MaxChunkSize (1GB)
+				ChunkSize:        2 * GB, // 2GB > MaxChunkSize (1GB)
 				MaxPendingChunks: DefaultMaxPendingChunks,
 			},
 			expectedWorker:  DefaultWorkers,
-			expectedChunk:   1024 * 1024 * 1024,
+			expectedChunk:   GB,
 			expectedPending: DefaultMaxPendingChunks,
 		},
 		{
@@ -150,11 +157,11 @@ func TestNewEncryptorWithConfig_Clamping(t *testing.T) {
 			name: "custom valid values",
 			config: EncryptorConfig{
 				Workers:          8,
-				ChunkSize:        2 * 1024 * 1024, // 2MB
+				ChunkSize:        2 * MB, // 2MB
 				MaxPendingChunks: 50,
 			},
 			expectedWorker:  8,
-			expectedChunk:   2 * 1024 * 1024,
+			expectedChunk:   2 * MB,
 			expectedPending: 50,
 		},
 	}
@@ -186,7 +193,7 @@ func TestNewEncryptorWithConfig_EncryptionDecryption(t *testing.T) {
 
 	config := EncryptorConfig{
 		Workers:          4,
-		ChunkSize:        64 * 1024, // 64KB chunks
+		ChunkSize:        64 * KB, // 64KB chunks
 		MaxPendingChunks: 25,
 	}
 
@@ -216,13 +223,12 @@ func TestNewEncryptorWithConfig_EncryptionDecryption(t *testing.T) {
 }
 
 // TestNewEncryptorWithConfig_PendingChunksLimit verifies that the pending chunks
-// limit is respected but doesn't break legitimate out-of-order processing.
+// limit is respected. Uses single worker to guarantee in-order processing
+// so the limit is never exceeded.
 func TestNewEncryptorWithConfig_PendingChunksLimit(t *testing.T) {
-	// Create data with moderate size that won't overwhelm the pending limit
-	// but still tests the limit behavior
-	dataSize := 2 * 1024 * 1024 // 2MB (not 10MB to avoid excessive pending)
-	chunkSize := 64 * 1024      // 64KB chunks -> about 32 chunks total
-	smallPendingLimit := 5      // Small limit but enough for 32 chunks
+	dataSize := 2 * MB   // 2MB
+	chunkSize := 64 * KB // 64KB chunks -> about 32 chunks total
+	smallPendingLimit := 5
 
 	data := make([]byte, dataSize)
 	for i := range data {
@@ -230,7 +236,7 @@ func TestNewEncryptorWithConfig_PendingChunksLimit(t *testing.T) {
 	}
 
 	config := EncryptorConfig{
-		Workers:          4, // Moderate parallelism to reduce out-of-order
+		Workers:          1, // Single worker = sequential = no out-of-order
 		ChunkSize:        chunkSize,
 		MaxPendingChunks: smallPendingLimit,
 	}
@@ -243,13 +249,10 @@ func TestNewEncryptorWithConfig_PendingChunksLimit(t *testing.T) {
 	var encryptedBuf bytes.Buffer
 	reader := bytes.NewReader(data)
 
-	// This should succeed - the pending limit should be sufficient
-	// because total chunks (32) is > limit (5) but workers will reorder
 	if err := encryptor.Encrypt(reader, &encryptedBuf, "test-password"); err != nil {
-		t.Fatalf("encryption with pending limit %d failed: %v", smallPendingLimit, err)
+		t.Fatalf("encryption with single worker and pending limit %d failed: %v", smallPendingLimit, err)
 	}
 
-	// Verify decryption works
 	var decryptedBuf bytes.Buffer
 	encryptedReader := bytes.NewReader(encryptedBuf.Bytes())
 
@@ -263,12 +266,11 @@ func TestNewEncryptorWithConfig_PendingChunksLimit(t *testing.T) {
 }
 
 // TestNewEncryptorWithConfig_PendingChunksLimitExceeded verifies that the
-// encryptor fails when the pending chunks limit is set too low for the workload.
+// encryptor fails when the pending chunks limit is set too low for parallel workers.
 func TestNewEncryptorWithConfig_PendingChunksLimitExceeded(t *testing.T) {
-	// This test expects failure when the limit is unreasonably low
-	dataSize := 10 * 1024 * 1024 // 10MB
-	chunkSize := 1024            // 1KB chunks -> 10,000 chunks
-	unreasonableLimit := 2       // Very low limit
+	dataSize := 5 * MB   // 5MB
+	chunkSize := 64 * KB // 64KB chunks -> about 80 chunks total
+	unreasonableLimit := 3
 
 	data := make([]byte, dataSize)
 	for i := range data {
@@ -276,7 +278,7 @@ func TestNewEncryptorWithConfig_PendingChunksLimitExceeded(t *testing.T) {
 	}
 
 	config := EncryptorConfig{
-		Workers:          8, // High parallelism to maximize out-of-order
+		Workers:          4, // Multiple workers = potential out-of-order
 		ChunkSize:        chunkSize,
 		MaxPendingChunks: unreasonableLimit,
 	}
@@ -291,20 +293,47 @@ func TestNewEncryptorWithConfig_PendingChunksLimitExceeded(t *testing.T) {
 
 	err = encryptor.Encrypt(reader, &encryptedBuf, "test-password")
 
-	// With unreasonable limit, encryption should fail
 	if err == nil {
 		t.Error("expected encryption to fail with unreasonably low pending limit, but it succeeded")
 	}
 
-	// Verify the error message is helpful
 	if err != nil && !bytes.Contains([]byte(err.Error()), []byte("too many pending chunks")) {
 		t.Errorf("expected 'too many pending chunks' error, got: %v", err)
 	}
 }
 
+// TestNewEncryptorWithConfig_ZeroPendingLimit verifies that zero/negative values
+// are properly clamped to default.
+func TestNewEncryptorWithConfig_ZeroPendingLimit(t *testing.T) {
+	testData := []byte("test data for zero pending limit")
+
+	config := EncryptorConfig{
+		Workers:          1,
+		ChunkSize:        64 * KB,
+		MaxPendingChunks: 0, // Should be clamped to DefaultMaxPendingChunks
+	}
+
+	encryptor, err := NewEncryptorWithConfig(config)
+	if err != nil {
+		t.Fatalf("failed to create encryptor: %v", err)
+	}
+
+	if encryptor.maxPendingChunks != DefaultMaxPendingChunks {
+		t.Errorf("maxPendingChunks should be clamped to %d, got %d",
+			DefaultMaxPendingChunks, encryptor.maxPendingChunks)
+	}
+
+	var encryptedBuf bytes.Buffer
+	reader := bytes.NewReader(testData)
+
+	if err := encryptor.Encrypt(reader, &encryptedBuf, "test-password"); err != nil {
+		t.Fatalf("encryption with default pending limit failed: %v", err)
+	}
+}
+
 // BenchmarkEncryptWithConfig measures performance with different pending chunk limits.
 func BenchmarkEncryptWithConfig(b *testing.B) {
-	dataSize := 10 * 1024 * 1024 // 10MB
+	dataSize := 10 * MB // 10MB
 	data := make([]byte, dataSize)
 
 	configs := []struct {

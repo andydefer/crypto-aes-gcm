@@ -22,7 +22,7 @@ import (
 //   - output: Path where decrypted plaintext will be written
 //
 // Flags:
-//   - --pass, -p: Passphrase used for encryption (required)
+//   - --pass, -p: Passphrase used for encryption (optional - will prompt if omitted)
 //   - --workers, -w: Number of parallel workers (default: cryptolib.DefaultWorkers)
 //   - --force, -f: Overwrite output file without confirmation
 //   - --quiet, -q: Suppress progress output
@@ -42,19 +42,23 @@ The decryption process:
   4. Streams and decrypts the data to the output file
   5. Verifies integrity of each chunk via GCM authentication
 
+Password can be provided via:
+  - --pass flag (visible in process list, not recommended for shared environments)
+  - Interactive prompt (recommended for manual use)
+
 Examples:
+  cryptool decrypt secret.enc secret.txt              # Prompts for password
   cryptool decrypt secret.enc secret.txt --pass myPassword
   cryptool decrypt data.enc output.txt --pass secure123 --force
-  cryptool decrypt large.enc result.bin --pass pass123 --workers 8 --quiet`,
+  cryptool decrypt large.enc result.bin --workers 8 --quiet`,
 		Args: cobra.ExactArgs(2),
 		RunE: runDecrypt,
 	}
 
-	cmd.Flags().StringVarP(&pass, "pass", "p", "", "Passphrase used for encryption (required)")
+	cmd.Flags().StringVarP(&pass, "pass", "p", "", "Passphrase used for encryption (optional - will prompt if omitted)")
 	cmd.Flags().IntVarP(&workers, "workers", "w", cryptolib.DefaultWorkers, "Number of parallel workers")
 	cmd.Flags().BoolVarP(&force, "force", "f", false, "Overwrite existing output file without confirmation")
 	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Suppress progress bar output")
-	_ = cmd.MarkFlagRequired("pass")
 
 	return cmd
 }
@@ -98,8 +102,16 @@ func runDecrypt(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Resolve password (prompt if not provided via flag)
+	// For decryption, needConfirmation=false (single prompt, no confirmation)
+	password, err := resolvePassword(pass, false)
+	if err != nil {
+		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
+		return err
+	}
+
 	// Execute decryption
-	if err := service.ExecuteDecryption(input, output, pass, quiet); err != nil {
+	if err := service.ExecuteDecryption(input, output, password, quiet); err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
 		return err
 	}

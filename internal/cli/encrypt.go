@@ -22,7 +22,7 @@ import (
 //   - output: Path where encrypted data will be written
 //
 // Flags:
-//   - --pass, -p: Passphrase for encryption (required)
+//   - --pass, -p: Passphrase for encryption (optional - if omitted, prompts interactively)
 //   - --workers, -w: Number of parallel workers (default: cryptolib.DefaultWorkers)
 //   - --force, -f: Overwrite output file without confirmation
 //   - --quiet, -q: Suppress progress output
@@ -42,19 +42,23 @@ The encryption process:
   4. Encrypts chunks in parallel using the specified number of workers
   5. Writes header, HMAC, nonce, and encrypted chunks to the output file
 
+Password can be provided via:
+  - --pass flag (visible in process list, not recommended for shared environments)
+  - Interactive prompt (recommended for manual use)
+
 Examples:
+  cryptool encrypt secret.txt secret.enc              # Prompts for password
   cryptool encrypt secret.txt secret.enc --pass myPassword
   cryptool encrypt data.txt output.enc --pass secure123 --force
-  cryptool encrypt large.bin result.enc --pass pass123 --workers 8 --quiet`,
+  cryptool encrypt large.bin result.enc --workers 8 --quiet`,
 		Args: cobra.ExactArgs(2),
 		RunE: runEncrypt,
 	}
 
-	cmd.Flags().StringVarP(&pass, "pass", "p", "", "Passphrase for encryption (required)")
+	cmd.Flags().StringVarP(&pass, "pass", "p", "", "Passphrase for encryption (optional - will prompt if omitted)")
 	cmd.Flags().IntVarP(&workers, "workers", "w", cryptolib.DefaultWorkers, "Number of parallel workers for chunk encryption")
 	cmd.Flags().BoolVarP(&force, "force", "f", false, "Overwrite existing output file without confirmation")
 	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Suppress progress bar output")
-	_ = cmd.MarkFlagRequired("pass")
 
 	return cmd
 }
@@ -101,8 +105,16 @@ func runEncrypt(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Resolve password (prompt if not provided via flag)
+	// For encryption, needConfirmation=true to require password confirmation
+	password, err := resolvePassword(pass, true)
+	if err != nil {
+		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
+		return err
+	}
+
 	// Execute encryption
-	if err := service.ExecuteEncryption(input, output, pass, workerCount, quiet); err != nil {
+	if err := service.ExecuteEncryption(input, output, password, workerCount, quiet); err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
 		return err
 	}
