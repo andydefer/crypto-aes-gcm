@@ -108,7 +108,7 @@ EOF
     cat > "$INPUT_DIR/config.json" << 'EOF'
 {
     "aesaescryptool_test": {
-        "version": "2.0.0",
+        "version": "2.1.0",
         "description": "Test configuration file for aescryptool",
         "encryption": {
             "algorithm": "AES-256-GCM",
@@ -165,7 +165,7 @@ EOF
     <metadata>
         <generated_at>2024-01-01T00:00:00Z</generated_at>
         <tool>aescryptool-test-generator</tool>
-        <version>2.0.0</version>
+        <version>2.1.0</version>
     </metadata>
 
     <test_suite name="encryption">

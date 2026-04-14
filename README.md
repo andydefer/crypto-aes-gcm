@@ -596,4 +596,4 @@ Ce logiciel est fourni "tel quel". Pour des données extrêmement sensibles, con
 
 **Made with 🔐 by andydefer**
 
-*Version 2.0.0 - Support multilingue + Mode interactif + Prompt mot de passe + Installation automatique + Streaming pur + Authentification par chunk*
+*Version 2.1.0 - Support multilingue + Mode interactif + Prompt mot de passe + Installation automatique + Streaming pur + Authentification par chunk*
