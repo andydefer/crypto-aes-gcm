@@ -11,6 +11,13 @@ IGNORED_EXTENSIONS = .bin .exe .enc .jpg .png .pdf .zip .tar .gz .so .dll .o .a
 IGNORED_FILES_PATTERNS = cryptool cryptool-* test.enc test.bin all.txt
 
 # ---------------------------------------------------
+# Directories
+# ---------------------------------------------------
+PRIVATE_DIR = private
+DIFF_DIR = $(PRIVATE_DIR)/diff
+CONCAT_DIR = $(PRIVATE_DIR)/concat-all
+
+# ---------------------------------------------------
 # Version Control Operations
 # ---------------------------------------------------
 
@@ -48,111 +55,111 @@ git-tag:
 
 .PHONY: generate-ai-diff
 generate-ai-diff:
-	@mkdir -p diff
+	@mkdir -p $(DIFF_DIR)
 	@timestamp=$$(date +"%Y%m%d_%H%M%S"); \
 	read -p "📁 Enter directory/path(s) to include in the diff (space-separated, leave empty for all changes): " DIR_PATHS; \
 	if [ -z "$$DIR_PATHS" ]; then \
-		echo "📝 Generating git diff for ALL changes into diff/diff_$${timestamp}.txt..."; \
-		echo "Tu es un expert en revue de code et en conventions de commits (Conventional Commits)." > diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "À partir du diff Git ci-dessous, fais les choses suivantes :" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "1. Propose un nom de commit clair et concis en anglais" >> diff/diff_$${timestamp}.txt; \
-		echo "   avec le format <type>(<scope>): <description>," >> diff/diff_$${timestamp}.txt; \
-		echo "   en respectant les Conventional Commits" >> diff/diff_$${timestamp}.txt; \
-		echo "   (ex: feat:, fix:, refactor:, test:, chore:, docs:)." >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "2. Rédige un résumé du travail effectué en quelques phrases," >> diff/diff_$${timestamp}.txt; \
-		echo "   orienté métier et technique." >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "3. Donne une liste d'exemples concrets de changements, en t'appuyant sur le diff :" >> diff/diff_$${timestamp}.txt; \
-		echo "   - méthodes ajoutées, modifiées ou supprimées" >> diff/diff_$${timestamp}.txt; \
-		echo "   - responsabilités déplacées ou clarifiées" >> diff/diff_$${timestamp}.txt; \
-		echo "   - améliorations de validation, de logique ou de structure" >> diff/diff_$${timestamp}.txt; \
-		echo "   - impacts fonctionnels éventuels" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "Contraintes :" >> diff/diff_$${timestamp}.txt; \
-		echo "   - Ne décris que ce qui est réellement visible dans le diff" >> diff/diff_$${timestamp}.txt; \
-		echo "   - Sois précis, factuel et structuré" >> diff/diff_$${timestamp}.txt; \
-		echo "   - Évite les suppositions" >> diff/diff_$${timestamp}.txt; \
-		echo "   - Utilise un ton professionnel" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "4. SI et SEULEMENT SI les changements sont cassants (breaking changes) :" >> diff/diff_$${timestamp}.txt; \
-		echo "   - Génère une entrée de CHANGELOG conforme à Keep a Changelog et SemVer." >> diff/diff_$${timestamp}.txt; \
-		echo "   - Le changelog doit apparaître APRES les recommandations ci-dessus." >> diff/diff_$${timestamp}.txt; \
-		echo "   - Utilise STRICTEMENT la structure suivante :" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "     ## [X.0.0] - YYYY-MM-DD" >> diff/diff_$${timestamp}.txt; \
-		echo "     ### Changed" >> diff/diff_$${timestamp}.txt; \
-		echo "     - Description claire du changement cassant" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "     ### Removed (si applicable)" >> diff/diff_$${timestamp}.txt; \
-		echo "     - API, méthode ou comportement supprimé" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "     ### Security (si applicable)" >> diff/diff_$${timestamp}.txt; \
-		echo "     - Impact sécurité lié au changement" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "   - Ne génère PAS de changelog si aucun breaking change n'est détecté." >> diff/diff_$${timestamp}.txt; \
-		echo "   - N'invente PAS de version." >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "Voici le diff :" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		git diff HEAD -- . ':!*.phpunit.result.cache' ':!diff/*' ':!*.enc' ':!*.bin' ':!cryptool*' >> diff/diff_$${timestamp}.txt; \
-		echo "✅ Clean diff generated successfully: diff/diff_$${timestamp}.txt"; \
+		echo "📝 Generating git diff for ALL changes into $(DIFF_DIR)/diff_$${timestamp}.txt..."; \
+		echo "Tu es un expert en revue de code et en conventions de commits (Conventional Commits)." > $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "À partir du diff Git ci-dessous, fais les choses suivantes :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "1. Propose un nom de commit clair et concis en anglais" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   avec le format <type>(<scope>): <description>," >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   en respectant les Conventional Commits" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   (ex: feat:, fix:, refactor:, test:, chore:, docs:)." >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "2. Rédige un résumé du travail effectué en quelques phrases," >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   orienté métier et technique." >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "3. Donne une liste d'exemples concrets de changements, en t'appuyant sur le diff :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - méthodes ajoutées, modifiées ou supprimées" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - responsabilités déplacées ou clarifiées" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - améliorations de validation, de logique ou de structure" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - impacts fonctionnels éventuels" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "Contraintes :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Ne décris que ce qui est réellement visible dans le diff" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Sois précis, factuel et structuré" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Évite les suppositions" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Utilise un ton professionnel" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "4. SI et SEULEMENT SI les changements sont cassants (breaking changes) :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Génère une entrée de CHANGELOG conforme à Keep a Changelog et SemVer." >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Le changelog doit apparaître APRES les recommandations ci-dessus." >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Utilise STRICTEMENT la structure suivante :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     ## [X.0.0] - YYYY-MM-DD" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     ### Changed" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     - Description claire du changement cassant" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     ### Removed (si applicable)" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     - API, méthode ou comportement supprimé" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     ### Security (si applicable)" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     - Impact sécurité lié au changement" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Ne génère PAS de changelog si aucun breaking change n'est détecté." >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - N'invente PAS de version." >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "Voici le diff :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		git diff HEAD -- . ':!*.phpunit.result.cache' ':!$(PRIVATE_DIR)/*' ':!*.enc' ':!*.bin' ':!cryptool*' ':!build/*' ':!tests/test_data/*' >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "✅ Clean diff generated successfully: $(DIFF_DIR)/diff_$${timestamp}.txt"; \
 	else \
-		echo "📝 Generating clean git diff for paths: $${DIR_PATHS} into diff/diff_$${timestamp}.txt..."; \
-		echo "Tu es un expert en revue de code et en conventions de commits (Conventional Commits)." > diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "À partir du diff Git ci-dessous, fais les choses suivantes :" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "1. Propose un nom de commit clair et concis en anglais" >> diff/diff_$${timestamp}.txt; \
-		echo "   avec le format <type>(<scope>): <description>," >> diff/diff_$${timestamp}.txt; \
-		echo "   en respectant les Conventional Commits" >> diff/diff_$${timestamp}.txt; \
-		echo "   (ex: feat:, fix:, refactor:, test:, chore:, docs:)." >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "2. Rédige un résumé du travail effectué en quelques phrases," >> diff/diff_$${timestamp}.txt; \
-		echo "   orienté métier et technique." >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "3. Donne une liste d'exemples concrets de changements, en t'appuyant sur le diff :" >> diff/diff_$${timestamp}.txt; \
-		echo "   - méthodes ajoutées, modifiées ou supprimées" >> diff/diff_$${timestamp}.txt; \
-		echo "   - responsabilités déplacées ou clarifiées" >> diff/diff_$${timestamp}.txt; \
-		echo "   - améliorations de validation, de logique ou de structure" >> diff/diff_$${timestamp}.txt; \
-		echo "   - impacts fonctionnels éventuels" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "Contraintes :" >> diff/diff_$${timestamp}.txt; \
-		echo "   - Ne décris que ce qui est réellement visible dans le diff" >> diff/diff_$${timestamp}.txt; \
-		echo "   - Sois précis, factuel et structuré" >> diff/diff_$${timestamp}.txt; \
-		echo "   - Évite les suppositions" >> diff/diff_$${timestamp}.txt; \
-		echo "   - Utilise un ton professionnel" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "4. SI et SEULEMENT SI les changements sont cassants (breaking changes) :" >> diff/diff_$${timestamp}.txt; \
-		echo "   - Génère une entrée de CHANGELOG conforme à Keep a Changelog et SemVer." >> diff/diff_$${timestamp}.txt; \
-		echo "   - Le changelog doit apparaître APRES les recommandations ci-dessus." >> diff/diff_$${timestamp}.txt; \
-		echo "   - Utilise STRICTEMENT la structure suivante :" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "     ## [X.0.0] - YYYY-MM-DD" >> diff/diff_$${timestamp}.txt; \
-		echo "     ### Changed" >> diff/diff_$${timestamp}.txt; \
-		echo "     - Description claire du changement cassant" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "     ### Removed (si applicable)" >> diff/diff_$${timestamp}.txt; \
-		echo "     - API, méthode ou comportement supprimé" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "     ### Security (si applicable)" >> diff/diff_$${timestamp}.txt; \
-		echo "     - Impact sécurité lié au changement" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "   - Ne génère PAS de changelog si aucun breaking change n'est détecté." >> diff/diff_$${timestamp}.txt; \
-		echo "   - N'invente PAS de version." >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		echo "Voici le diff :" >> diff/diff_$${timestamp}.txt; \
-		echo "" >> diff/diff_$${timestamp}.txt; \
-		git diff HEAD -- $$DIR_PATHS ':!*.phpunit.result.cache' ':!diff/*' ':!*.enc' ':!*.bin' ':!cryptool*' >> diff/diff_$${timestamp}.txt; \
-		echo "✅ Clean diff generated successfully: diff/diff_$${timestamp}.txt"; \
+		echo "📝 Generating clean git diff for paths: $${DIR_PATHS} into $(DIFF_DIR)/diff_$${timestamp}.txt..."; \
+		echo "Tu es un expert en revue de code et en conventions de commits (Conventional Commits)." > $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "À partir du diff Git ci-dessous, fais les choses suivantes :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "1. Propose un nom de commit clair et concis en anglais" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   avec le format <type>(<scope>): <description>," >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   en respectant les Conventional Commits" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   (ex: feat:, fix:, refactor:, test:, chore:, docs:)." >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "2. Rédige un résumé du travail effectué en quelques phrases," >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   orienté métier et technique." >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "3. Donne une liste d'exemples concrets de changements, en t'appuyant sur le diff :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - méthodes ajoutées, modifiées ou supprimées" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - responsabilités déplacées ou clarifiées" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - améliorations de validation, de logique ou de structure" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - impacts fonctionnels éventuels" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "Contraintes :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Ne décris que ce qui est réellement visible dans le diff" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Sois précis, factuel et structuré" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Évite les suppositions" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Utilise un ton professionnel" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "4. SI et SEULEMENT SI les changements sont cassants (breaking changes) :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Génère une entrée de CHANGELOG conforme à Keep a Changelog et SemVer." >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Le changelog doit apparaître APRES les recommandations ci-dessus." >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Utilise STRICTEMENT la structure suivante :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     ## [X.0.0] - YYYY-MM-DD" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     ### Changed" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     - Description claire du changement cassant" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     ### Removed (si applicable)" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     - API, méthode ou comportement supprimé" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     ### Security (si applicable)" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "     - Impact sécurité lié au changement" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - Ne génère PAS de changelog si aucun breaking change n'est détecté." >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "   - N'invente PAS de version." >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "Voici le diff :" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "" >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		git diff HEAD -- $$DIR_PATHS ':!*.phpunit.result.cache' ':!$(PRIVATE_DIR)/*' ':!*.enc' ':!*.bin' ':!cryptool*' ':!build/*' ':!tests/test_data/*' >> $(DIFF_DIR)/diff_$${timestamp}.txt; \
+		echo "✅ Clean diff generated successfully: $(DIFF_DIR)/diff_$${timestamp}.txt"; \
 	fi
 
 .PHONY: list-diffs
 list-diffs:
 	@echo "📁 Available diff files:"
-	@ls -la diff/diff_*.txt 2>/dev/null || echo "No diff files found"
+	@ls -la $(DIFF_DIR)/diff_*.txt 2>/dev/null || echo "No diff files found in $(DIFF_DIR)"
 
 .PHONY: git-tag-republish
 git-tag-republish:
@@ -170,15 +177,18 @@ git-tag-republish:
 
 .PHONY: concat-all
 concat-all:
+	@mkdir -p $(CONCAT_DIR)
 	@read -p "📁 Enter the source directory path to scan (leave empty for default './pkg ./internal ./cmd'): " SOURCE_PATH; \
 	if [ -z "$$SOURCE_PATH" ]; then \
 		SOURCE_DIRS="./pkg ./internal ./cmd"; \
-		echo "🔗 Concatenating all TEXT files from default directories: $${SOURCE_DIRS} into all.txt..."; \
+		echo "🔗 Concatenating all TEXT files from default directories: $${SOURCE_DIRS} into $(CONCAT_DIR)/all.txt..."; \
 	else \
 		SOURCE_DIRS="$$SOURCE_PATH"; \
-		echo "🔗 Concatenating all TEXT files from directory: $${SOURCE_DIRS} into all.txt..."; \
+		echo "🔗 Concatenating all TEXT files from directory: $${SOURCE_DIRS} into $(CONCAT_DIR)/all.txt..."; \
 	fi; \
-	> all.txt; \
+	timestamp=$$(date +"%Y%m%d_%H%M%S"); \
+	output_file="$(CONCAT_DIR)/all_$${timestamp}.txt"; \
+	> "$$output_file"; \
 	for dir in $${SOURCE_DIRS}; do \
 		if [ -d "$$dir" ]; then \
 			find "$$dir" -type f \
@@ -194,12 +204,17 @@ concat-all:
 				-not -name "test.enc" \
 				-not -name "test.bin" \
 				-not -name "all.txt" \
-				-exec sh -c 'echo ""; echo "// ==== {} ==="; echo ""; cat "{}" 2>/dev/null || echo "⚠️  Cannot read: {}"' \; >> all.txt 2>/dev/null; \
+				-exec sh -c 'echo ""; echo "// ==== {} ==="; echo ""; cat "{}" 2>/dev/null || echo "⚠️  Cannot read: {}"' \; >> "$$output_file" 2>/dev/null; \
 		else \
 			echo "⚠️  Directory not found: $$dir"; \
 		fi; \
 	done; \
-	echo "✅ File all.txt generated successfully from: $${SOURCE_DIRS} (binary files excluded)"
+	echo "✅ File $$output_file generated successfully from: $${SOURCE_DIRS} (binary files excluded)"
+
+.PHONY: list-concats
+list-concats:
+	@echo "📁 Available concatenated files:"
+	@ls -la $(CONCAT_DIR)/all_*.txt 2>/dev/null || echo "No concatenated files found in $(CONCAT_DIR)"
 
 # ---------------------------------------------------
 # Clean temporary files
@@ -212,11 +227,18 @@ clean:
 	@rm -f test.enc test.decrypted.txt test.bin
 	@echo "✅ Clean completed"
 
+.PHONY: clean-private
+clean-private:
+	@echo "🧹 Cleaning private directory..."
+	@rm -rf $(PRIVATE_DIR)
+	@echo "✅ Private directory cleaned"
+
 .PHONY: clean-all
 clean-all: clean
 	@echo "🧹 Cleaning all generated files..."
 	@rm -f cryptool cryptool-*
-	@rm -rf diff/*.txt
+	@rm -rf $(PRIVATE_DIR)
+	@rm -rf build
 	@echo "✅ Deep clean completed"
 
 # ---------------------------------------------------
@@ -236,25 +258,33 @@ release:
 .PHONY: build
 build:
 	@echo "🔨 Building cryptool for current platform..."
-	@go build -o cryptool ./cmd/cryptool
-	@chmod +x cryptool
-	@echo "✅ Build completed: ./cryptool (executable with chmod +x)"
+	@mkdir -p build
+	@go build -o build/cryptool ./cmd/cryptool
+	@chmod +x build/cryptool
+	@echo "✅ Build completed: build/cryptool"
 
 .PHONY: build-all
 build-all:
 	@echo "🔨 Building for all platforms..."
+	@mkdir -p build
+
 	@echo "  📦 Building for Linux (amd64)..."
-	@GOOS=linux GOARCH=amd64 go build -o cryptool-linux-amd64 ./cmd/cryptool && chmod +x cryptool-linux-amd64
+	@GOOS=linux GOARCH=amd64 go build -o build/cryptool-linux-amd64 ./cmd/cryptool && chmod +x build/cryptool-linux-amd64
+
 	@echo "  📦 Building for Windows (amd64)..."
-	@GOOS=windows GOARCH=amd64 go build -o cryptool-windows-amd64.exe ./cmd/cryptool
+	@GOOS=windows GOARCH=amd64 go build -o build/cryptool-windows-amd64.exe ./cmd/cryptool
+
 	@echo "  📦 Building for macOS Intel (amd64)..."
-	@GOOS=darwin GOARCH=amd64 go build -o cryptool-darwin-amd64 ./cmd/cryptool && chmod +x cryptool-darwin-amd64
+	@GOOS=darwin GOARCH=amd64 go build -o build/cryptool-darwin-amd64 ./cmd/cryptool && chmod +x build/cryptool-darwin-amd64
+
 	@echo "  📦 Building for macOS Apple Silicon (arm64)..."
-	@GOOS=darwin GOARCH=arm64 go build -o cryptool-darwin-arm64 ./cmd/cryptool && chmod +x cryptool-darwin-arm64
+	@GOOS=darwin GOARCH=arm64 go build -o build/cryptool-darwin-arm64 ./cmd/cryptool && chmod +x build/cryptool-darwin-arm64
+
 	@echo "  📦 Building for Linux (arm64)..."
-	@GOOS=linux GOARCH=arm64 go build -o cryptool-linux-arm64 ./cmd/cryptool && chmod +x cryptool-linux-arm64
+	@GOOS=linux GOARCH=arm64 go build -o build/cryptool-linux-arm64 ./cmd/cryptool && chmod +x build/cryptool-linux-arm64
+
 	@echo "✅ Build completed for all platforms"
-	@ls -lh cryptool-* 2>/dev/null || true
+	@ls -lh build/cryptool-* 2>/dev/null || true
 
 # ---------------------------------------------------
 # Test Commands
@@ -278,6 +308,87 @@ test-coverage:
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "✅ Coverage report: coverage.html"
 
+
+.PHONY: gotestsum
+gotestsum:
+	@echo "🧪 Running tests with gotestsum..."
+	@PATH="$$(go env GOPATH)/bin:$$PATH" gotestsum --format testname ./...
+
+# ---------------------------------------------------
+# Test Scripts Commands
+# ---------------------------------------------------
+
+.PHONY: test-scripts
+test-scripts:
+	@echo "🧪 Running test scripts..."
+	@chmod +x tests/run_tests.sh
+	@./tests/run_tests.sh
+
+.PHONY: test-scripts-short
+test-scripts-short:
+	@echo "🧪 Running test scripts (short mode)..."
+	@chmod +x tests/run_tests.sh
+	@./tests/run_tests.sh --short
+
+.PHONY: test-scenarios
+test-scenarios:
+	@echo "🎬 Running test scenarios..."
+	@chmod +x tests/test_scenarios.sh
+	@./tests/test_scenarios.sh
+
+.PHONY: test-scenarios-short
+test-scenarios-short:
+	@echo "🎬 Running test scenarios (short mode)..."
+	@chmod +x tests/test_scenarios.sh
+	@./tests/test_scenarios.sh --short
+
+.PHONY: test-scenarios-verbose
+test-scenarios-verbose:
+	@echo "🎬 Running test scenarios (verbose mode)..."
+	@chmod +x tests/test_scenarios.sh
+	@./tests/test_scenarios.sh --verbose
+
+.PHONY: test-all
+test-all: test-scripts test-scenarios
+	@echo "✅ All tests completed"
+
+.PHONY: test-all-short
+test-all-short: test-scripts-short test-scenarios-short
+	@echo "✅ All short tests completed"
+
+# ---------------------------------------------------
+# Generate Test Files
+# ---------------------------------------------------
+
+.PHONY: generate-test-files
+generate-test-files:
+	@echo "📁 Generating test files..."
+	@chmod +x tests/generate_test_files.sh
+	@./tests/generate_test_files.sh
+
+.PHONY: generate-test-files-short
+generate-test-files-short:
+	@echo "📁 Generating test files (short mode)..."
+	@chmod +x tests/generate_test_files.sh
+	@./tests/generate_test_files.sh --short
+
+# ---------------------------------------------------
+# Clean Test Data
+# ---------------------------------------------------
+
+.PHONY: clean-test-data
+clean-test-data:
+	@echo "🧹 Cleaning test data..."
+	@rm -rf tests/test_data
+	@echo "✅ Test data cleaned"
+
+.PHONY: clean-all-tests
+clean-all-tests: clean-test-data
+	@echo "🧹 Cleaning all test artifacts..."
+	@rm -rf tests/results
+	@rm -f tests/*.log
+	@echo "✅ All test artifacts cleaned"
+
 # ---------------------------------------------------
 # Help & Documentation
 # ---------------------------------------------------
@@ -289,22 +400,43 @@ help:
 	@echo "🚀 Version Control:"
 	@echo "  git-commit-push       Commit and push all changes"
 	@echo "  git-tag               Create and push a new version tag"
-	@echo "  generate-ai-diff      Generate clean diff for AI review"
+	@echo "  generate-ai-diff      Generate clean diff for AI review (saved in private/diff/)"
+	@echo "  list-diffs            List all generated diff files"
 	@echo "  git-tag-republish     Force push the last tag"
 	@echo ""
 	@echo "📁 File Management:"
-	@echo "  concat-all            Concatenate all TEXT files (excludes binaries)"
+	@echo "  concat-all            Concatenate all TEXT files (saved in private/concat-all/)"
+	@echo "  list-concats          List all concatenated files"
 	@echo "  clean                 Remove temporary files"
+	@echo "  clean-private         Remove private directory"
 	@echo "  clean-all             Remove all generated files including binaries"
 	@echo ""
 	@echo "🔨 Build:"
-	@echo "  build                 Build cryptool for current platform (with chmod +x)"
+	@echo "  build                 Build cryptool for current platform"
 	@echo "  build-all             Build cryptool for all platforms (Linux, Windows, macOS)"
 	@echo ""
-	@echo "🧪 Test:"
-	@echo "  test                  Run all tests"
-	@echo "  test-short            Run short tests"
-	@echo "  test-coverage         Run tests with coverage report"
+	@echo "🧪 Go Tests:"
+	@echo "  test                  Run all Go tests"
+	@echo "  test-short            Run short Go tests"
+	@echo "  test-coverage         Run Go tests with coverage report"
+	@echo "  gotestsum             Run tests with gotestsum formatter"
+	@echo ""
+	@echo "📋 Test Scripts (Realistic):"
+	@echo "  test-scripts          Run realistic test scripts"
+	@echo "  test-scripts-short    Run realistic test scripts (short mode)"
+	@echo "  test-scenarios        Run advanced test scenarios"
+	@echo "  test-scenarios-short  Run advanced test scenarios (short mode)"
+	@echo "  test-scenarios-verbose Run advanced test scenarios (verbose mode)"
+	@echo "  test-all              Run all test scripts and scenarios"
+	@echo "  test-all-short        Run all tests in short mode"
+	@echo ""
+	@echo "📁 Test Files Generation:"
+	@echo "  generate-test-files       Generate test files (including 50MB+ files)"
+	@echo "  generate-test-files-short Generate test files (short mode, no large files)"
+	@echo ""
+	@echo "🧹 Test Cleanup:"
+	@echo "  clean-test-data       Clean test data only"
+	@echo "  clean-all-tests       Clean all test artifacts"
 	@echo ""
 	@echo "🔄 Release Management:"
 	@echo "  release               Create new release (includes pre-release)"

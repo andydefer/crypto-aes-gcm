@@ -1,14 +1,16 @@
+// Package cryptolib provides AES-256-GCM file encryption and decryption.
+//
+// This package implements secure file encryption using AES-256-GCM in counter mode
+// with Argon2id key derivation. It supports parallel streaming encryption for large
+// files and includes integrity verification through HMAC.
 package cryptolib
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"hash"
 	"io"
 	"os"
 	"runtime"
@@ -25,11 +27,13 @@ type Encryptor struct {
 	bufferPool sync.Pool
 }
 
+// chunkJob represents a single chunk of plaintext to be encrypted.
 type chunkJob struct {
 	index uint64
 	data  []byte
 }
 
+// chunkResult represents an encrypted chunk with its original index.
 type chunkResult struct {
 	index      uint64
 	ciphertext []byte
@@ -50,8 +54,8 @@ func NewEncryptor(workers int) (*Encryptor, error) {
 		chunkSize: DefaultChunkSize,
 		bufferPool: sync.Pool{
 			New: func() interface{} {
-				b := make([]byte, DefaultChunkSize)
-				return &b
+				buffer := make([]byte, DefaultChunkSize)
+				return &buffer
 			},
 		},
 	}, nil
@@ -59,23 +63,23 @@ func NewEncryptor(workers int) (*Encryptor, error) {
 
 // EncryptFile encrypts a file at inputPath and writes the result to outputPath.
 func (e *Encryptor) EncryptFile(inputPath, outputPath, passphrase string) error {
-	in, err := os.Open(inputPath)
+	input, err := os.Open(inputPath)
 	if err != nil {
 		return fmt.Errorf("open input: %w", err)
 	}
-	defer in.Close()
+	defer input.Close()
 
-	out, err := os.Create(outputPath)
+	output, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("create output: %w", err)
 	}
-	defer out.Close()
+	defer output.Close()
 
-	return e.Encrypt(in, out, passphrase)
+	return e.Encrypt(input, output, passphrase)
 }
 
 // Encrypt reads from r, encrypts the data, and writes to w.
-func (e *Encryptor) Encrypt(r io.Reader, w io.Writer, passphrase string) error {
+func (e *Encryptor) Encrypt(reader io.Reader, writer io.Writer, passphrase string) error {
 	var salt [SaltSize]byte
 	if _, err := rand.Read(salt[:]); err != nil {
 		return fmt.Errorf("generate salt: %w", err)
@@ -83,7 +87,7 @@ func (e *Encryptor) Encrypt(r io.Reader, w io.Writer, passphrase string) error {
 
 	key := argon2.DeriveKey(passphrase, salt[:], argon2.DefaultParams())
 
-	if err := e.writeHeader(w, key, salt); err != nil {
+	if err := e.writeHeader(writer, key, salt); err != nil {
 		return err
 	}
 
@@ -91,6 +95,7 @@ func (e *Encryptor) Encrypt(r io.Reader, w io.Writer, passphrase string) error {
 	if err != nil {
 		return fmt.Errorf("create cipher: %w", err)
 	}
+
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return fmt.Errorf("create GCM: %w", err)
@@ -100,14 +105,16 @@ func (e *Encryptor) Encrypt(r io.Reader, w io.Writer, passphrase string) error {
 	if _, err := rand.Read(baseNonce); err != nil {
 		return fmt.Errorf("generate nonce: %w", err)
 	}
-	if _, err := w.Write(baseNonce); err != nil {
+
+	if _, err := writer.Write(baseNonce); err != nil {
 		return fmt.Errorf("write nonce: %w", err)
 	}
 
-	return e.processEncryption(r, w, gcm, key, baseNonce)
+	return e.processEncryption(reader, writer, gcm, baseNonce)
 }
 
-func (e *Encryptor) writeHeader(w io.Writer, key []byte, salt [SaltSize]byte) error {
+// writeHeader writes the file header and its HMAC to the writer.
+func (e *Encryptor) writeHeader(writer io.Writer, key []byte, salt [SaltSize]byte) error {
 	headerData := FileHeader{
 		Magic:     [4]byte{Magic[0], Magic[1], Magic[2], Magic[3]},
 		Version:   Version,
@@ -115,131 +122,160 @@ func (e *Encryptor) writeHeader(w io.Writer, key []byte, salt [SaltSize]byte) er
 		ChunkSize: uint32(e.chunkSize),
 	}
 
-	if err := binary.Write(w, binary.BigEndian, &headerData); err != nil {
+	if err := binary.Write(writer, binary.BigEndian, &headerData); err != nil {
 		return fmt.Errorf("write header: %w", err)
 	}
 
-	headerHMAC := header.ComputeHMAC(key, header.ToBytes(
+	headerHMAC := header.ComputeHMAC(key, header.Serialize(
 		headerData.Magic,
 		headerData.Version,
 		headerData.Salt,
 		headerData.ChunkSize,
 	))
-	if _, err := w.Write(headerHMAC); err != nil {
+
+	if _, err := writer.Write(headerHMAC); err != nil {
 		return fmt.Errorf("write header HMAC: %w", err)
 	}
 
 	return nil
 }
 
-func (e *Encryptor) processEncryption(r io.Reader, w io.Writer, gcm cipher.AEAD, key []byte, baseNonce []byte) error {
+// processEncryption orchestrates the parallel encryption pipeline.
+func (e *Encryptor) processEncryption(reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonce []byte) error {
 	jobs := make(chan chunkJob, e.workers*2)
 	results := make(chan chunkResult, e.workers*2)
-	var wg sync.WaitGroup
+	var workerWaitGroup sync.WaitGroup
 
 	for i := 0; i < e.workers; i++ {
-		wg.Add(1)
-		go e.encryptionWorker(gcm, baseNonce, jobs, results, &wg)
+		workerWaitGroup.Add(1)
+		go e.encryptionWorker(gcm, baseNonce, jobs, results, &workerWaitGroup)
 	}
 
 	go func() {
-		wg.Wait()
+		workerWaitGroup.Wait()
 		close(results)
 	}()
 
-	go e.readChunks(r, jobs)
+	go e.readChunks(reader, jobs)
 
-	globalHMAC := hmac.New(sha256.New, key)
-	if err := e.writeResults(results, w, globalHMAC); err != nil {
+	if err := e.writeResults(results, writer); err != nil {
 		return err
 	}
 
-	if err := binary.Write(w, binary.BigEndian, uint32(0)); err != nil {
+	if err := binary.Write(writer, binary.BigEndian, uint32(0)); err != nil {
 		return fmt.Errorf("write end marker: %w", err)
-	}
-
-	if _, err := w.Write(globalHMAC.Sum(nil)); err != nil {
-		return fmt.Errorf("write global HMAC: %w", err)
 	}
 
 	return nil
 }
 
-func (e *Encryptor) encryptionWorker(gcm cipher.AEAD, baseNonce []byte, jobs <-chan chunkJob, results chan<- chunkResult, wg *sync.WaitGroup) {
-	defer wg.Done()
-	for job := range jobs {
-		nonce := make([]byte, NonceSize)
-		copy(nonce, baseNonce)
-		binary.BigEndian.PutUint64(nonce[4:], job.index)
+// encryptionWorker encrypts chunks from the jobs channel and sends results.
+func (e *Encryptor) encryptionWorker(gcm cipher.AEAD, baseNonce []byte, jobs <-chan chunkJob, results chan<- chunkResult, waitGroup *sync.WaitGroup) {
+	defer waitGroup.Done()
 
+	for job := range jobs {
+		nonce := e.deriveChunkNonce(baseNonce, job.index)
 		ciphertext := gcm.Seal(nil, nonce, job.data, nil)
+
 		results <- chunkResult{
 			index:      job.index,
 			ciphertext: ciphertext,
 		}
+
 		e.bufferPool.Put(&job.data)
 	}
 }
 
-func (e *Encryptor) readChunks(r io.Reader, jobs chan<- chunkJob) {
+// deriveChunkNonce creates a chunk-specific nonce by XORing the base nonce
+// with the chunk index bytes to prevent nonce reuse.
+func (e *Encryptor) deriveChunkNonce(baseNonce []byte, chunkIndex uint64) []byte {
+	nonce := make([]byte, NonceSize)
+	copy(nonce, baseNonce)
+
+	indexBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(indexBytes, chunkIndex)
+
+	for i := 0; i < 8 && i < NonceSize-4; i++ {
+		nonce[4+i] ^= indexBytes[i]
+	}
+
+	return nonce
+}
+
+// readChunks reads plaintext chunks from the reader and sends them to the jobs channel.
+func (e *Encryptor) readChunks(reader io.Reader, jobs chan<- chunkJob) {
 	defer close(jobs)
-	var index uint64
+
+	var chunkIndex uint64
 
 	for {
-		bufPtr := e.bufferPool.Get().(*[]byte)
-		buf := *bufPtr
-		n, err := io.ReadFull(r, buf[:e.chunkSize])
+		bufferPtr := e.bufferPool.Get().(*[]byte)
+		buffer := *bufferPtr
+
+		bytesRead, err := io.ReadFull(reader, buffer[:e.chunkSize])
 
 		if err == io.EOF {
-			e.bufferPool.Put(bufPtr)
+			e.bufferPool.Put(bufferPtr)
 			break
 		}
 
 		if err == io.ErrUnexpectedEOF {
-			if n > 0 {
-				jobs <- chunkJob{index: index, data: buf[:n]}
-				index++
+			if bytesRead > 0 {
+				jobs <- chunkJob{index: chunkIndex, data: buffer[:bytesRead]}
+				chunkIndex++
 			}
-			e.bufferPool.Put(bufPtr)
+			e.bufferPool.Put(bufferPtr)
 			break
 		}
 
 		if err != nil {
-			e.bufferPool.Put(bufPtr)
+			e.bufferPool.Put(bufferPtr)
 			break
 		}
 
-		jobs <- chunkJob{index: index, data: buf[:n]}
-		index++
+		jobs <- chunkJob{index: chunkIndex, data: buffer[:bytesRead]}
+		chunkIndex++
 	}
 }
 
-func (e *Encryptor) writeResults(results <-chan chunkResult, w io.Writer, globalHMAC hash.Hash) error {
+// writeResults writes ciphertext chunks in order with bounded memory usage.
+//
+// This function maintains a pending map for out-of-order chunks and limits
+// the maximum pending size to prevent memory exhaustion attacks.
+func (e *Encryptor) writeResults(results <-chan chunkResult, writer io.Writer) error {
+	const maxPending = 100
 	expectedIndex := uint64(0)
 	pending := make(map[uint64][]byte)
 
 	for result := range results {
+		if len(pending) > maxPending {
+			return fmt.Errorf("too many pending chunks (limit %d) - possible reordering attack", maxPending)
+		}
+
 		pending[result.index] = result.ciphertext
 
 		for {
-			ciphertext, ok := pending[expectedIndex]
-			if !ok {
+			ciphertext, exists := pending[expectedIndex]
+			if !exists {
 				break
 			}
 
 			chunkLen := uint32(len(ciphertext))
-			if err := binary.Write(w, binary.BigEndian, chunkLen); err != nil {
+			if err := binary.Write(writer, binary.BigEndian, chunkLen); err != nil {
 				return fmt.Errorf("write chunk length: %w", err)
 			}
 
-			if _, err := w.Write(ciphertext); err != nil {
+			if _, err := writer.Write(ciphertext); err != nil {
 				return fmt.Errorf("write ciphertext: %w", err)
 			}
 
-			globalHMAC.Write(ciphertext)
 			delete(pending, expectedIndex)
 			expectedIndex++
 		}
+	}
+
+	if len(pending) > 0 {
+		return fmt.Errorf("missing chunks: expected index %d, have %d pending", expectedIndex, len(pending))
 	}
 
 	return nil

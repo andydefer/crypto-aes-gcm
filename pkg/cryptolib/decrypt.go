@@ -1,13 +1,22 @@
+// Package cryptolib provides AES-256-GCM file encryption and decryption.
+//
+// This package implements secure file encryption using AES-256-GCM in counter mode
+// with Argon2id key derivation. It supports streaming decryption for large files
+// and includes integrity verification through HMAC.
+//
+// The decryption process:
+//   - Reads and validates file header with HMAC authentication
+//   - Derives encryption key using Argon2id with salt from header
+//   - Streams and decrypts chunks using derived nonces
+//   - Verifies authenticity of each chunk via GCM
 package cryptolib
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/hmac"
-	"crypto/sha256"
 	"encoding/binary"
+	"errors"
 	"fmt"
-	"hash"
 	"io"
 	"os"
 
@@ -34,24 +43,24 @@ func NewDecryptor(passphrase string, salt []byte) (*Decryptor, error) {
 
 // DecryptFile decrypts a file at inputPath and writes the result to outputPath.
 func (d *Decryptor) DecryptFile(inputPath, outputPath string) error {
-	in, err := os.Open(inputPath)
+	input, err := os.Open(inputPath)
 	if err != nil {
 		return fmt.Errorf("open input: %w", err)
 	}
-	defer in.Close()
+	defer input.Close()
 
-	out, err := os.Create(outputPath)
+	output, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("create output: %w", err)
 	}
-	defer out.Close()
+	defer output.Close()
 
-	return d.Decrypt(in, out)
+	return d.Decrypt(input, output)
 }
 
 // Decrypt reads encrypted data from r and writes the plaintext to w.
-func (d *Decryptor) Decrypt(r io.Reader, w io.Writer) error {
-	headerData, baseNonce, err := d.readAndVerifyHeader(r)
+func (d *Decryptor) Decrypt(reader io.Reader, writer io.Writer) error {
+	headerData, baseNonce, err := d.readAndVerifyHeader(reader)
 	if err != nil {
 		return err
 	}
@@ -62,17 +71,19 @@ func (d *Decryptor) Decrypt(r io.Reader, w io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("create cipher: %w", err)
 	}
+
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return fmt.Errorf("create GCM: %w", err)
 	}
 
-	return d.processDecryption(r, w, gcm, baseNonce)
+	return d.processDecryption(reader, writer, gcm, baseNonce)
 }
 
-func (d *Decryptor) readAndVerifyHeader(r io.Reader) (FileHeader, []byte, error) {
+// readAndVerifyHeader extracts and validates the encrypted file header.
+func (d *Decryptor) readAndVerifyHeader(reader io.Reader) (FileHeader, []byte, error) {
 	var headerData FileHeader
-	if err := binary.Read(r, binary.BigEndian, &headerData); err != nil {
+	if err := binary.Read(reader, binary.BigEndian, &headerData); err != nil {
 		return FileHeader{}, nil, fmt.Errorf("read header: %w", err)
 	}
 
@@ -85,51 +96,42 @@ func (d *Decryptor) readAndVerifyHeader(r io.Reader) (FileHeader, []byte, error)
 	}
 
 	storedHMAC := make([]byte, 32)
-	if _, err := io.ReadFull(r, storedHMAC); err != nil {
+	if _, err := io.ReadFull(reader, storedHMAC); err != nil {
 		return FileHeader{}, nil, fmt.Errorf("read header HMAC: %w", err)
 	}
 
-	if !header.VerifyHMAC(d.key, header.ToBytes(
+	serialized := header.Serialize(
 		headerData.Magic,
 		headerData.Version,
 		headerData.Salt,
 		headerData.ChunkSize,
-	), storedHMAC) {
+	)
+
+	if !header.VerifyHMAC(d.key, serialized, storedHMAC) {
 		return FileHeader{}, nil, ErrHeaderAuthFailed
 	}
 
 	baseNonce := make([]byte, NonceSize)
-	if _, err := io.ReadFull(r, baseNonce); err != nil {
+	if _, err := io.ReadFull(reader, baseNonce); err != nil {
 		return FileHeader{}, nil, fmt.Errorf("read nonce: %w", err)
 	}
 
 	return headerData, baseNonce, nil
 }
 
-func (d *Decryptor) processDecryption(r io.Reader, w io.Writer, gcm cipher.AEAD, baseNonce []byte) error {
-	ciphertexts, globalHMAC, err := d.readCiphertexts(r)
-	if err != nil {
-		return err
-	}
-
-	if err := d.verifyGlobalHMAC(r, globalHMAC); err != nil {
-		return err
-	}
-
-	return d.decryptAndWrite(ciphertexts, w, gcm, baseNonce)
-}
-
-func (d *Decryptor) readCiphertexts(r io.Reader) ([][]byte, hash.Hash, error) {
-	var ciphertexts [][]byte
-	globalHMAC := hmac.New(sha256.New, d.key)
+// processDecryption streams chunks from the reader, decrypts them, and writes to the writer.
+func (d *Decryptor) processDecryption(reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonce []byte) error {
+	var chunkIndex uint64
 
 	for {
 		var chunkLen uint32
-		if err := binary.Read(r, binary.BigEndian, &chunkLen); err != nil {
-			if err == io.EOF {
-				return nil, nil, fmt.Errorf("unexpected EOF: missing end marker")
-			}
-			return nil, nil, fmt.Errorf("read chunk length: %w", err)
+		err := binary.Read(reader, binary.BigEndian, &chunkLen)
+
+		if errors.Is(err, io.EOF) {
+			return fmt.Errorf("unexpected EOF: missing end marker")
+		}
+		if err != nil {
+			return fmt.Errorf("read chunk length: %w", err)
 		}
 
 		if chunkLen == 0 {
@@ -137,44 +139,39 @@ func (d *Decryptor) readCiphertexts(r io.Reader) ([][]byte, hash.Hash, error) {
 		}
 
 		ciphertext := make([]byte, chunkLen)
-		if _, err := io.ReadFull(r, ciphertext); err != nil {
-			return nil, nil, fmt.Errorf("read ciphertext: %w", err)
+		if _, err := io.ReadFull(reader, ciphertext); err != nil {
+			return fmt.Errorf("read ciphertext chunk %d: %w", chunkIndex, err)
 		}
-		ciphertexts = append(ciphertexts, ciphertext)
-		globalHMAC.Write(ciphertext)
-	}
 
-	return ciphertexts, globalHMAC, nil
-}
-
-func (d *Decryptor) verifyGlobalHMAC(r io.Reader, computedHMAC hash.Hash) error {
-	stored := make([]byte, 32)
-	if _, err := io.ReadFull(r, stored); err != nil {
-		return fmt.Errorf("read global HMAC: %w", err)
-	}
-
-	if !hmac.Equal(stored, computedHMAC.Sum(nil)) {
-		return ErrGlobalHMACFailed
-	}
-
-	return nil
-}
-
-func (d *Decryptor) decryptAndWrite(ciphertexts [][]byte, w io.Writer, gcm cipher.AEAD, baseNonce []byte) error {
-	for idx, ciphertext := range ciphertexts {
-		nonce := make([]byte, NonceSize)
-		copy(nonce, baseNonce)
-		binary.BigEndian.PutUint64(nonce[4:], uint64(idx))
+		nonce := d.deriveChunkNonce(baseNonce, chunkIndex)
 
 		plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 		if err != nil {
-			return fmt.Errorf("%w (chunk %d): %v", ErrDecryptionFailed, idx, err)
+			return fmt.Errorf("%w chunk %d: %w", ErrDecryptionFailed, chunkIndex, err)
 		}
 
-		if _, err := w.Write(plaintext); err != nil {
-			return fmt.Errorf("write plaintext: %w", err)
+		if _, err := writer.Write(plaintext); err != nil {
+			return fmt.Errorf("write plaintext chunk %d: %w", chunkIndex, err)
 		}
+
+		chunkIndex++
 	}
 
 	return nil
+}
+
+// deriveChunkNonce creates a chunk-specific nonce by XORing the base nonce
+// with the chunk index bytes.
+func (d *Decryptor) deriveChunkNonce(baseNonce []byte, chunkIndex uint64) []byte {
+	nonce := make([]byte, NonceSize)
+	copy(nonce, baseNonce)
+
+	indexBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(indexBytes, chunkIndex)
+
+	for i := 0; i < 8 && i < NonceSize-4; i++ {
+		nonce[4+i] ^= indexBytes[i]
+	}
+
+	return nonce
 }

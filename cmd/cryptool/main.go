@@ -1,4 +1,7 @@
-// ==== ./cmd/cryptool/main.go ====
+// Package main provides a CLI tool for AES-256-GCM file encryption.
+//
+// Cryptool is a secure file encryption utility that uses AES-256-GCM with
+// Argon2id key derivation and parallel streaming encryption for large files.
 package main
 
 import (
@@ -17,13 +20,11 @@ import (
 )
 
 var (
-	// Global flags
 	pass    string
 	workers int
 	force   bool
 	quiet   bool
 
-	// Color styles
 	infoColor    = color.New(color.FgCyan, color.Bold)
 	successColor = color.New(color.FgGreen, color.Bold)
 	errorColor   = color.New(color.FgRed, color.Bold)
@@ -68,7 +69,6 @@ Examples:
 		},
 	}
 
-	// Encrypt command
 	encryptCmd := &cobra.Command{
 		Use:   "encrypt [input] [output]",
 		Short: "🔒 Encrypt a file",
@@ -77,7 +77,6 @@ Examples:
 		Run:   runEncrypt,
 	}
 
-	// Decrypt command
 	decryptCmd := &cobra.Command{
 		Use:   "decrypt [input] [output]",
 		Short: "🔓 Decrypt a file",
@@ -86,7 +85,6 @@ Examples:
 		Run:   runDecrypt,
 	}
 
-	// Version command
 	versionCmd := &cobra.Command{
 		Use:   "version",
 		Short: "Show version information",
@@ -95,13 +93,12 @@ Examples:
 		},
 	}
 
-	// Add global flags to both commands
 	for _, cmd := range []*cobra.Command{encryptCmd, decryptCmd} {
 		cmd.Flags().StringVarP(&pass, "pass", "p", "", "Passphrase for encryption/decryption (required)")
 		cmd.Flags().IntVarP(&workers, "workers", "w", cryptolib.DefaultWorkers, "Number of parallel workers (encryption only)")
 		cmd.Flags().BoolVarP(&force, "force", "f", false, "Force overwrite existing output file")
 		cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Suppress progress output")
-		cmd.MarkFlagRequired("pass")
+		_ = cmd.MarkFlagRequired("pass")
 	}
 
 	rootCmd.AddCommand(encryptCmd, decryptCmd, versionCmd)
@@ -111,61 +108,45 @@ Examples:
 	}
 }
 
+// runEncrypt handles the encryption command execution.
 func runEncrypt(cmd *cobra.Command, args []string) {
 	input := args[0]
 	output := args[1]
 
-	// Validate worker count
-	workerCount := workers
-	if workerCount <= 0 {
-		workerCount = cryptolib.DefaultWorkers
-	}
-	if workerCount > runtime.NumCPU()*2 {
-		workerCount = runtime.NumCPU() * 2
-		if !quiet {
-			warningColor.Printf("⚠️  Workers reduced to %d (max 2×CPU cores)\n", workerCount)
-		}
-	}
+	workerCount := validateWorkerCount(workers)
 
-	// Check input file exists
-	if _, err := os.Stat(input); os.IsNotExist(err) {
-		errorColor.Fprintf(os.Stderr, "❌ Error: input file '%s' does not exist\n", input)
+	if err := validateInputFile(input); err != nil {
+		errorColor.Fprintf(os.Stderr, "❌ Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Check output file overwrite
 	if err := checkOverwrite(output, force); err != nil {
 		errorColor.Fprintf(os.Stderr, "❌ Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Get file size for progress bar
 	fileInfo, _ := os.Stat(input)
 	fileSize := fileInfo.Size()
 
-	// Show info header
 	if !quiet {
 		printHeader("ENCRYPT", input, output, workerCount)
 	}
 
-	// Create progress bar
 	bar := createProgressBar(fileSize, "🔒 Encrypting")
 
-	// Create encryptor
 	encryptor, err := cryptolib.NewEncryptor(workerCount)
 	if err != nil {
 		errorColor.Fprintf(os.Stderr, "❌ Failed to create encryptor: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Wrap reader with progress tracking
 	reader := &progressReader{
 		r:     mustOpenFile(input),
 		bar:   bar,
 		total: fileSize,
 	}
+	defer reader.Close()
 
-	// Create output file
 	outFile, err := os.Create(output)
 	if err != nil {
 		errorColor.Fprintf(os.Stderr, "❌ Failed to create output file: %v\n", err)
@@ -173,7 +154,6 @@ func runEncrypt(cmd *cobra.Command, args []string) {
 	}
 	defer outFile.Close()
 
-	// Perform encryption
 	if err := encryptor.Encrypt(reader, outFile, pass); err != nil {
 		bar.Clear()
 		errorColor.Fprintf(os.Stderr, "❌ Encryption failed: %v\n", err)
@@ -184,35 +164,30 @@ func runEncrypt(cmd *cobra.Command, args []string) {
 	printSuccess(output, fileSize)
 }
 
+// runDecrypt handles the decryption command execution.
 func runDecrypt(cmd *cobra.Command, args []string) {
 	input := args[0]
 	output := args[1]
 
-	// Check input file exists
-	if _, err := os.Stat(input); os.IsNotExist(err) {
-		errorColor.Fprintf(os.Stderr, "❌ Error: input file '%s' does not exist\n", input)
+	if err := validateInputFile(input); err != nil {
+		errorColor.Fprintf(os.Stderr, "❌ Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Check output file overwrite
 	if err := checkOverwrite(output, force); err != nil {
 		errorColor.Fprintf(os.Stderr, "❌ Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Get file size
 	fileInfo, _ := os.Stat(input)
 	fileSize := fileInfo.Size()
 
-	// Show info header
 	if !quiet {
 		printHeader("DECRYPT", input, output, workers)
 	}
 
-	// Create progress bar
 	bar := createProgressBar(fileSize, "🔓 Decrypting")
 
-	// Read header first to get salt
 	f, err := os.Open(input)
 	if err != nil {
 		errorColor.Fprintf(os.Stderr, "❌ Failed to open input: %v\n", err)
@@ -226,22 +201,19 @@ func runDecrypt(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	// Create decryptor
 	decryptor, err := cryptolib.NewDecryptor(pass, header.Salt[:])
 	if err != nil {
 		errorColor.Fprintf(os.Stderr, "❌ Failed to create decryptor: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Re-open file for full decryption
-	f.Seek(0, 0)
+	_, _ = f.Seek(0, 0)
 	reader := &progressReader{
 		r:     f,
 		bar:   bar,
 		total: fileSize,
 	}
 
-	// Create output file
 	outFile, err := os.Create(output)
 	if err != nil {
 		errorColor.Fprintf(os.Stderr, "❌ Failed to create output file: %v\n", err)
@@ -249,7 +221,6 @@ func runDecrypt(cmd *cobra.Command, args []string) {
 	}
 	defer outFile.Close()
 
-	// Perform decryption
 	if err := decryptor.Decrypt(reader, outFile); err != nil {
 		bar.Clear()
 		errorColor.Fprintf(os.Stderr, "❌ Decryption failed: %v\n", err)
@@ -260,6 +231,32 @@ func runDecrypt(cmd *cobra.Command, args []string) {
 	printSuccess(output, fileSize)
 }
 
+// validateWorkerCount ensures the worker count is within reasonable bounds.
+func validateWorkerCount(requested int) int {
+	if requested <= 0 {
+		return cryptolib.DefaultWorkers
+	}
+
+	maxWorkers := runtime.NumCPU() * 2
+	if requested > maxWorkers {
+		if !quiet {
+			warningColor.Printf("⚠️  Workers reduced to %d (max 2×CPU cores)\n", maxWorkers)
+		}
+		return maxWorkers
+	}
+
+	return requested
+}
+
+// validateInputFile checks if the input file exists and is accessible.
+func validateInputFile(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return fmt.Errorf("input file '%s' does not exist", path)
+	}
+	return nil
+}
+
+// checkOverwrite prompts for confirmation when output file exists.
 func checkOverwrite(output string, force bool) error {
 	if force {
 		return nil
@@ -280,6 +277,7 @@ func checkOverwrite(output string, force bool) error {
 	return nil
 }
 
+// printHeader displays operation information before starting.
 func printHeader(mode, input, output string, workers int) {
 	infoColor.Printf("\n🔐 Crypto-AES-GCM - %s MODE\n", mode)
 	fmt.Println(strings.Repeat("─", 50))
@@ -290,27 +288,30 @@ func printHeader(mode, input, output string, workers int) {
 	fmt.Println()
 }
 
+// printSuccess displays completion information with file size.
 func printSuccess(output string, size int64) {
 	fmt.Println()
-	successColor.Printf("✅ Decryption successful!\n")
+	successColor.Printf("✅ Operation successful!\n")
 	infoColor.Printf("📄 Output: %s\n", output)
-
-	// Show file size
-	var sizeStr string
-	switch {
-	case size > 1024*1024*1024:
-		sizeStr = fmt.Sprintf("%.2f GB", float64(size)/(1024*1024*1024))
-	case size > 1024*1024:
-		sizeStr = fmt.Sprintf("%.2f MB", float64(size)/(1024*1024))
-	case size > 1024:
-		sizeStr = fmt.Sprintf("%.2f KB", float64(size)/1024)
-	default:
-		sizeStr = fmt.Sprintf("%d B", size)
-	}
-	infoColor.Printf("📏 Size:   %s\n", sizeStr)
+	infoColor.Printf("📏 Size:   %s\n", formatFileSize(size))
 	fmt.Println()
 }
 
+// formatFileSize converts bytes to human-readable format.
+func formatFileSize(bytes int64) string {
+	switch {
+	case bytes > 1024*1024*1024:
+		return fmt.Sprintf("%.2f GB", float64(bytes)/(1024*1024*1024))
+	case bytes > 1024*1024:
+		return fmt.Sprintf("%.2f MB", float64(bytes)/(1024*1024))
+	case bytes > 1024:
+		return fmt.Sprintf("%.2f KB", float64(bytes)/1024)
+	default:
+		return fmt.Sprintf("%d B", bytes)
+	}
+}
+
+// printVersion displays version and build information.
 func printVersion() {
 	headerColor.Printf(`
 ╔═══════════════════════════════════════╗
@@ -324,6 +325,7 @@ func printVersion() {
 	infoColor.Printf("  💻 CPUs:     %d\n\n", runtime.NumCPU())
 }
 
+// createProgressBar initializes a progress bar for file operations.
 func createProgressBar(total int64, description string) *progressbar.ProgressBar {
 	return progressbar.NewOptions64(
 		total,
@@ -343,7 +345,7 @@ func createProgressBar(total int64, description string) *progressbar.ProgressBar
 	)
 }
 
-// progressReader wraps an io.Reader to track progress
+// progressReader wraps an io.ReadCloser to track reading progress.
 type progressReader struct {
 	r     io.ReadCloser
 	bar   *progressbar.ProgressBar
@@ -351,6 +353,7 @@ type progressReader struct {
 	read  int64
 }
 
+// Read implements io.Reader with progress tracking.
 func (pr *progressReader) Read(p []byte) (n int, err error) {
 	n, err = pr.r.Read(p)
 	pr.read += int64(n)
@@ -358,10 +361,12 @@ func (pr *progressReader) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
+// Close implements io.Closer.
 func (pr *progressReader) Close() error {
 	return pr.r.Close()
 }
 
+// mustOpenFile opens a file or exits with an error.
 func mustOpenFile(path string) io.ReadCloser {
 	f, err := os.Open(path)
 	if err != nil {
@@ -370,5 +375,3 @@ func mustOpenFile(path string) io.ReadCloser {
 	}
 	return f
 }
-
-// Helper for strings.Repeat (add at top if not imported)

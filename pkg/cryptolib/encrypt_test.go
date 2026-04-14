@@ -1,3 +1,7 @@
+// Package cryptolib provides cryptographic file encryption and decryption.
+//
+// This package implements AES-256-GCM encryption with Argon2id key derivation
+// and parallel streaming capabilities for large files.
 package cryptolib
 
 import (
@@ -9,8 +13,15 @@ import (
 	"testing"
 )
 
+// TestEncryptor_EncryptDecrypt verifies the complete encryption and decryption cycle.
+//
+// It tests various scenarios including:
+//   - Small and large data sizes
+//   - Different worker counts for parallel processing
+//   - Different passwords
+//   - Empty file handling
 func TestEncryptor_EncryptDecrypt(t *testing.T) {
-	originalData := []byte("This is secret data that needs to be encrypted. " +
+	smallData := []byte("This is secret data that needs to be encrypted. " +
 		"It contains multiple chunks to test streaming encryption. " +
 		"Lorem ipsum dolor sit amet, consectetur adipiscing elit. " +
 		"Repeat this several times to ensure chunking works correctly. " +
@@ -18,7 +29,7 @@ func TestEncryptor_EncryptDecrypt(t *testing.T) {
 		"Adding even more text to create multiple chunks for testing.")
 
 	largeData := make([]byte, 5*1024*1024)
-	rand.Read(largeData)
+	_, _ = rand.Read(largeData)
 
 	testCases := []struct {
 		name     string
@@ -27,19 +38,19 @@ func TestEncryptor_EncryptDecrypt(t *testing.T) {
 		password string
 	}{
 		{
-			name:     "small data",
-			data:     originalData,
+			name:     "small data with single worker",
+			data:     smallData,
 			workers:  1,
 			password: "test-password-123",
 		},
 		{
 			name:     "small data with multiple workers",
-			data:     originalData,
+			data:     smallData,
 			workers:  4,
 			password: "another-password",
 		},
 		{
-			name:     "large data (5MB)",
+			name:     "large data 5MB",
 			data:     largeData,
 			workers:  4,
 			password: "strong-password-with-special-chars!@#$%",
@@ -65,19 +76,18 @@ func TestEncryptor_EncryptDecrypt(t *testing.T) {
 				t.Fatalf("failed to create encryptor: %v", err)
 			}
 
-			err = encryptor.EncryptFile(inputFile, encryptedFile, tc.password)
-			if err != nil {
+			if err := encryptor.EncryptFile(inputFile, encryptedFile, tc.password); err != nil {
 				t.Fatalf("encryption failed: %v", err)
 			}
 
-			f, err := os.Open(encryptedFile)
+			file, err := os.Open(encryptedFile)
 			if err != nil {
 				t.Fatalf("failed to open encrypted file: %v", err)
 			}
-			defer f.Close()
+			defer file.Close()
 
 			var header FileHeader
-			if err := binary.Read(f, binary.BigEndian, &header); err != nil {
+			if err := binary.Read(file, binary.BigEndian, &header); err != nil {
 				t.Fatalf("failed to read header: %v", err)
 			}
 
@@ -86,8 +96,7 @@ func TestEncryptor_EncryptDecrypt(t *testing.T) {
 				t.Fatalf("failed to create decryptor: %v", err)
 			}
 
-			err = decryptor.DecryptFile(encryptedFile, decryptedFile)
-			if err != nil {
+			if err := decryptor.DecryptFile(encryptedFile, decryptedFile); err != nil {
 				t.Fatalf("decryption failed: %v", err)
 			}
 
@@ -97,13 +106,17 @@ func TestEncryptor_EncryptDecrypt(t *testing.T) {
 			}
 
 			if !bytes.Equal(tc.data, decryptedData) {
-				t.Errorf("decrypted data doesn't match original. Original length: %d, Decrypted length: %d",
+				t.Errorf("decrypted data mismatch: original %d bytes, decrypted %d bytes",
 					len(tc.data), len(decryptedData))
 			}
 		})
 	}
 }
 
+// TestEncryptor_WrongPassword verifies that decryption fails with an incorrect password.
+//
+// This test ensures that the authentication mechanism properly rejects
+// decryption attempts with wrong credentials.
 func TestEncryptor_WrongPassword(t *testing.T) {
 	originalData := []byte("secret data")
 	inputFile := createTempFile(t, originalData)
@@ -116,19 +129,18 @@ func TestEncryptor_WrongPassword(t *testing.T) {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}
 
-	err = encryptor.EncryptFile(inputFile, encryptedFile, "correct-password")
-	if err != nil {
+	if err := encryptor.EncryptFile(inputFile, encryptedFile, "correct-password"); err != nil {
 		t.Fatalf("encryption failed: %v", err)
 	}
 
-	f, err := os.Open(encryptedFile)
+	file, err := os.Open(encryptedFile)
 	if err != nil {
 		t.Fatalf("failed to open encrypted file: %v", err)
 	}
-	defer f.Close()
+	defer file.Close()
 
 	var header FileHeader
-	if err := binary.Read(f, binary.BigEndian, &header); err != nil {
+	if err := binary.Read(file, binary.BigEndian, &header); err != nil {
 		t.Fatalf("failed to read header: %v", err)
 	}
 
@@ -141,10 +153,14 @@ func TestEncryptor_WrongPassword(t *testing.T) {
 	err = decryptor.DecryptFile(encryptedFile, decryptedFile)
 
 	if err == nil {
-		t.Error("expected decryption to fail with wrong password, but it succeeded")
+		t.Error("decryption succeeded with wrong password, expected failure")
 	}
 }
 
+// TestEncryptor_StreamingInterface verifies the streaming reader/writer API.
+//
+// This test uses the streaming interfaces directly without temporary files,
+// ensuring the encryption and decryption work with any io.Reader/io.Writer.
 func TestEncryptor_StreamingInterface(t *testing.T) {
 	originalData := []byte("streaming test data for reader/writer interface")
 	reader := bytes.NewReader(originalData)
@@ -156,24 +172,24 @@ func TestEncryptor_StreamingInterface(t *testing.T) {
 		t.Fatalf("failed to create encryptor: %v", err)
 	}
 
-	err = encryptor.Encrypt(reader, &encryptedBuf, "stream-password")
-	if err != nil {
+	if err := encryptor.Encrypt(reader, &encryptedBuf, "stream-password"); err != nil {
 		t.Fatalf("encryption failed: %v", err)
 	}
 
-	// Use DecryptStream for simpler decryption
 	encryptedReader := bytes.NewReader(encryptedBuf.Bytes())
-	err = DecryptStream(encryptedReader, &decryptedBuf, "stream-password")
-	if err != nil {
+	if err := DecryptStream(encryptedReader, &decryptedBuf, "stream-password"); err != nil {
 		t.Fatalf("decryption failed: %v", err)
 	}
 
 	if !bytes.Equal(originalData, decryptedBuf.Bytes()) {
-		t.Errorf("decrypted data doesn't match original.\nOriginal: %s\nDecrypted: %s",
+		t.Errorf("decrypted data mismatch:\nOriginal: %s\nDecrypted: %s",
 			originalData, decryptedBuf.Bytes())
 	}
 }
 
+// TestEncryptor_InvalidWorkers verifies that worker count validation works correctly.
+//
+// The encryptor should clamp invalid worker values to safe defaults.
 func TestEncryptor_InvalidWorkers(t *testing.T) {
 	testCases := []struct {
 		name    string
@@ -181,7 +197,7 @@ func TestEncryptor_InvalidWorkers(t *testing.T) {
 	}{
 		{"zero workers", 0},
 		{"negative workers", -5},
-		{"too many workers", 1000},
+		{"excessive workers", 1000},
 	}
 
 	for _, tc := range testCases {
@@ -196,4 +212,63 @@ func TestEncryptor_InvalidWorkers(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestEncryptor_MemoryUsage verifies that encryption handles large files correctly.
+//
+// This test generates a 10MB file and ensures the encrypted output has
+// reasonable size expectations (larger than original due to crypto overhead).
+//
+// The test is skipped when running in short mode (-test.short) due to the
+// large file generation.
+func TestEncryptor_MemoryUsage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping memory test in short mode")
+	}
+
+	testData := make([]byte, 10*1024*1024)
+	_, _ = rand.Read(testData)
+
+	inputFile := createTempFile(t, testData)
+	defer os.Remove(inputFile)
+
+	encryptedFile := filepath.Join(t.TempDir(), "encrypted.bin")
+
+	encryptor, err := NewEncryptor(DefaultWorkers)
+	if err != nil {
+		t.Fatalf("failed to create encryptor: %v", err)
+	}
+
+	if err := encryptor.EncryptFile(inputFile, encryptedFile, "memory-test-password"); err != nil {
+		t.Fatalf("encryption failed: %v", err)
+	}
+
+	fileInfo, err := os.Stat(encryptedFile)
+	if err != nil {
+		t.Fatalf("failed to stat encrypted file: %v", err)
+	}
+
+	// Encrypted file should be larger than original (header + nonce + auth tags)
+	if fileInfo.Size() < int64(len(testData)) {
+		t.Errorf("encrypted file size %d is smaller than original %d",
+			fileInfo.Size(), len(testData))
+	}
+}
+
+// createTempFile creates a temporary file with the provided data.
+//
+// Parameters:
+//   - t: Testing context for fatal error reporting and cleanup
+//   - data: Bytes to write to the temporary file
+//
+// Returns:
+//   - string: Path to the created temporary file
+func createTempFile(t *testing.T, data []byte) string {
+	t.Helper()
+
+	tmpFile := filepath.Join(t.TempDir(), "input.txt")
+	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	return tmpFile
 }
