@@ -367,20 +367,57 @@ test_corruption_detection() {
         return 1
     fi
 
-    # Copier et corrompre le HMAC (offset 25) - garanti de faire échouer
-    local corrupted="$TEST_DIR/encrypted/corrupted.enc"
-    cp "$encrypted" "$corrupted"
-    dd if=/dev/zero of="$corrupted" bs=1 count=1 seek=25 conv=notrunc 2>/dev/null
+    # Tester plusieurs corruptions
+    local failed=0
 
-    # Tentative de décryption - DOIT ÉCHOUER
-    local decrypted="$TEST_DIR/decrypted/corrupted.txt"
-    "$CRYPTOOL_BIN" decrypt "$corrupted" "$decrypted" --pass "$password" 2>/dev/null
+    # Corruption 1: HMAC (offset 25)
+    local corrupted1="$TEST_DIR/encrypted/corrupted_hmac.enc"
+    cp "$encrypted" "$corrupted1"
+    # Changer un byte dans le HMAC
+    printf '\x00' | dd of="$corrupted1" bs=1 seek=25 count=1 conv=notrunc 2>/dev/null
 
+    local decrypted1="$TEST_DIR/decrypted/corrupted_hmac.txt"
+    "$CRYPTOOL_BIN" decrypt "$corrupted1" "$decrypted1" --pass "$password" 2>/dev/null
     if [ $? -ne 0 ]; then
-        print_success "Corruption détectée (décryption échouée)"
+        print_success "  ✅ Corruption HMAC détectée"
+    else
+        print_error "  ❌ Corruption HMAC non détectée"
+        failed=$((failed + 1))
+    fi
+
+    # Corruption 2: Nonce (offset 57)
+    local corrupted2="$TEST_DIR/encrypted/corrupted_nonce.enc"
+    cp "$encrypted" "$corrupted2"
+    printf '\x00' | dd of="$corrupted2" bs=1 seek=57 count=1 conv=notrunc 2>/dev/null
+
+    local decrypted2="$TEST_DIR/decrypted/corrupted_nonce.txt"
+    "$CRYPTOOL_BIN" decrypt "$corrupted2" "$decrypted2" --pass "$password" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        print_success "  ✅ Corruption Nonce détectée"
+    else
+        print_error "  ❌ Corruption Nonce non détectée"
+        failed=$((failed + 1))
+    fi
+
+    # Corruption 3: Ciphertext (offset 100)
+    local corrupted3="$TEST_DIR/encrypted/corrupted_cipher.enc"
+    cp "$encrypted" "$corrupted3"
+    printf '\x00' | dd of="$corrupted3" bs=1 seek=100 count=1 conv=notrunc 2>/dev/null
+
+    local decrypted3="$TEST_DIR/decrypted/corrupted_cipher.txt"
+    "$CRYPTOOL_BIN" decrypt "$corrupted3" "$decrypted3" --pass "$password" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        print_success "  ✅ Corruption Ciphertext détectée"
+    else
+        print_error "  ❌ Corruption Ciphertext non détectée"
+        failed=$((failed + 1))
+    fi
+
+    if [ $failed -eq 0 ]; then
+        print_success "Corruption détectée pour tous les types"
         return 0
     else
-        print_error "ERREUR: Décryption a réussi malgré la corruption!"
+        print_error "ERREUR: $failed corruption(s) non détectée(s)!"
         return 1
     fi
 }
