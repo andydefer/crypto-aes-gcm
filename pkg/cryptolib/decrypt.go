@@ -175,6 +175,14 @@ func (d *Decryptor) readAndVerifyHeader(reader io.Reader) (FileHeader, []byte, e
 // The function reads chunk length prefixes, decrypts authenticated ciphertext,
 // and writes plaintext sequentially. A zero-length chunk marks the end of stream.
 // Nonces are derived efficiently using a pre-allocated buffer to minimize allocations.
+//
+// Error conditions:
+//   - If EOF is reached before end marker: returns "unexpected EOF: missing end marker"
+//   - If chunk length read fails: returns wrapped binary.Read error
+//   - If ciphertext read fails: returns wrapped io.ReadFull error
+//   - If nonce derivation fails: returns wrapped crypto.DeriveChunkNonceFast error
+//   - If GCM authentication fails: returns ErrDecryptionFailed with chunk index
+//   - If plaintext write fails: returns wrapped writer.Write error
 func (d *Decryptor) processDecryption(reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonce []byte) error {
 	var chunkIndex uint64
 
@@ -185,9 +193,13 @@ func (d *Decryptor) processDecryption(reader io.Reader, writer io.Writer, gcm ci
 		err := binary.Read(reader, binary.BigEndian, &chunkLen)
 
 		if errors.Is(err, io.EOF) {
+			// This error occurs when the file ends before we see the zero-length
+			// end marker. The file is truncated or corrupted.
 			return errors.New(lang.T(lang.CryptolibErrUnexpectedEOF))
 		}
 		if err != nil {
+			// This error occurs when the chunk length cannot be read due to
+			// I/O errors or file corruption.
 			return fmt.Errorf(lang.T(lang.CryptolibErrReadChunkLen), err)
 		}
 
@@ -197,19 +209,26 @@ func (d *Decryptor) processDecryption(reader io.Reader, writer io.Writer, gcm ci
 
 		ciphertext := make([]byte, chunkLen)
 		if _, err := io.ReadFull(reader, ciphertext); err != nil {
+			// This error occurs when the ciphertext data is incomplete or corrupted.
 			return fmt.Errorf(lang.T(lang.CryptolibErrReadCiphertext), chunkIndex, err)
 		}
 
 		if err := crypto.DeriveChunkNonceFast(nonceBuf[:], baseNonce, chunkIndex); err != nil {
+			// This error occurs when nonce derivation fails (e.g., destination buffer too short).
 			return fmt.Errorf(lang.T(lang.CryptolibErrDeriveNonce), chunkIndex, err)
 		}
 
 		plaintext, err := gcm.Open(nil, nonceBuf[:], ciphertext, nil)
 		if err != nil {
+			// This error occurs when GCM authentication fails, indicating:
+			//   - Corrupted ciphertext data
+			//   - Incorrect encryption key (wrong password)
+			//   - File tampering or truncation
 			return fmt.Errorf("%w chunk %d: %w", ErrDecryptionFailed, chunkIndex, err)
 		}
 
 		if _, err := writer.Write(plaintext); err != nil {
+			// This error occurs when writing to the output fails (disk full, permission denied, etc.)
 			return fmt.Errorf(lang.T(lang.CryptolibErrWritePlaintext), chunkIndex, err)
 		}
 

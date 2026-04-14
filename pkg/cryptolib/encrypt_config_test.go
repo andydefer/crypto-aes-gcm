@@ -293,11 +293,10 @@ func TestNewEncryptorWithConfig_PendingChunksLimitExceeded(t *testing.T) {
 
 	err = encryptor.Encrypt(reader, &encryptedBuf, "test-password")
 
-	// ✅ Verify that encryption fails (returns an error)
+	// Verify that encryption fails (returns an error)
 	if err == nil {
 		t.Error("expected encryption to fail with unreasonably low pending limit, but it succeeded")
 	}
-
 }
 
 // TestNewEncryptorWithConfig_ZeroPendingLimit verifies that zero/negative values
@@ -330,6 +329,10 @@ func TestNewEncryptorWithConfig_ZeroPendingLimit(t *testing.T) {
 }
 
 // TestMemoryLeak verifies that encryption doesn't leak memory.
+//
+// This test runs multiple encryption operations and checks that memory
+// growth stays within acceptable limits. A growth of more than 10% is
+// considered a failure, as it may indicate a memory leak.
 func TestMemoryLeak(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping memory leak test in short mode")
@@ -339,11 +342,14 @@ func TestMemoryLeak(t *testing.T) {
 	password := "test-password"
 
 	var memStats1, memStats2 runtime.MemStats
+
+	// Force GC to get a clean baseline
 	runtime.GC()
 	runtime.ReadMemStats(&memStats1)
 
 	// Perform multiple encryption operations
-	for i := 0; i < 10; i++ {
+	const iterations = 10
+	for i := 0; i < iterations; i++ {
 		encryptor, err := NewEncryptor(DefaultWorkers())
 		if err != nil {
 			t.Fatalf("failed to create encryptor: %v", err)
@@ -356,15 +362,25 @@ func TestMemoryLeak(t *testing.T) {
 		}
 	}
 
+	// Force GC to collect any remaining garbage
 	runtime.GC()
 	runtime.ReadMemStats(&memStats2)
 
-	// Allow 10% memory growth
+	// Calculate memory growth
 	allocDiff := int64(memStats2.Alloc) - int64(memStats1.Alloc)
-	if allocDiff > int64(memStats1.Alloc)/10 {
-		t.Logf("Memory growth: %d bytes (%.1f%%)", allocDiff, float64(allocDiff)/float64(memStats1.Alloc)*100)
-		// Not a hard failure, just logging
+	growthPercent := float64(allocDiff) / float64(memStats1.Alloc) * 100
+
+	// Allow up to 10% memory growth (accounts for normal Go runtime overhead)
+	// A leak would show consistent growth across multiple runs
+	maxAllowedGrowthPercent := 10.0
+
+	if growthPercent > maxAllowedGrowthPercent {
+		t.Errorf("Memory growth %.1f%% exceeds allowed limit of %.0f%% (growth: %d bytes)",
+			growthPercent, maxAllowedGrowthPercent, allocDiff)
 	}
+
+	// Log for informational purposes
+	t.Logf("Memory growth: %d bytes (%.1f%%)", allocDiff, growthPercent)
 }
 
 // BenchmarkEncryptWithConfig measures performance with different pending chunk limits.

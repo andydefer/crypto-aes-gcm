@@ -402,6 +402,13 @@ func (e *Encryptor) readChunks(ctx context.Context, reader io.Reader, jobs chan<
 //
 // The function buffers out-of-order chunks and writes them sequentially.
 // A pending chunk limit prevents memory exhaustion attacks.
+//
+// Error conditions:
+//   - If the context is cancelled: returns ctx.Err()
+//   - If chunks are missing at the end: returns "missing chunks: expected index X, have Y pending"
+//   - If pending chunks exceed maxPendingChunks: returns "too many pending chunks (limit X) - possible reordering attack"
+//   - If writing chunk length fails: returns wrapped binary.Write error
+//   - If writing ciphertext fails: returns wrapped writer.Write error
 func (e *Encryptor) writeResultsWithContext(ctx context.Context, results <-chan chunkResult, writer io.Writer) error {
 	expectedIndex := uint64(0)
 	pending := make(map[uint64][]byte)
@@ -413,12 +420,18 @@ func (e *Encryptor) writeResultsWithContext(ctx context.Context, results <-chan 
 		case result, ok := <-results:
 			if !ok {
 				if len(pending) > 0 {
+					// This error occurs when the results channel closes but we still have
+					// buffered chunks waiting to be written. This indicates a bug in the
+					// encryption pipeline where some chunks were never processed.
 					return fmt.Errorf(lang.T(lang.CryptolibErrMissingChunks), expectedIndex, len(pending))
 				}
 				return nil
 			}
 
 			if len(pending) > e.maxPendingChunks {
+				// This error prevents memory exhaustion attacks where an attacker could
+				// cause out-of-order chunks to accumulate indefinitely. The limit is
+				// configurable via EncryptorConfig.MaxPendingChunks.
 				return fmt.Errorf(lang.T(lang.CryptolibErrTooManyPending), e.maxPendingChunks)
 			}
 
@@ -432,10 +445,14 @@ func (e *Encryptor) writeResultsWithContext(ctx context.Context, results <-chan 
 
 				chunkLen := uint32(len(ciphertext))
 				if err := binary.Write(writer, binary.BigEndian, chunkLen); err != nil {
+					// This error typically occurs when the writer is closed or has
+					// insufficient permissions. The underlying error is wrapped.
 					return fmt.Errorf(lang.T(lang.CryptolibErrWriteChunkLen), err)
 				}
 
 				if _, err := writer.Write(ciphertext); err != nil {
+					// This error occurs when the underlying writer fails (disk full,
+					// broken pipe, etc.). The original error is wrapped for context.
 					return fmt.Errorf(lang.T(lang.CryptolibErrWriteCiphertext), err)
 				}
 
