@@ -2,7 +2,7 @@
 
 [![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-111%20passed-brightgreen.svg)](.)
+[![Tests](https://img.shields.io/badge/tests-199%20passed-brightgreen.svg)](.)
 [![Cobra](https://img.shields.io/badge/cli-cobra-blue)](https://github.com/spf13/cobra)
 [![GoDoc](https://godoc.org/github.com/andydefer/crypto-aes-gcm?status.svg)](https://godoc.org/github.com/andydefer/crypto-aes-gcm)
 
@@ -12,6 +12,7 @@ Un outil de chiffrement sécurisé et performant utilisant **AES-256-GCM** en mo
 
 - 🔐 **Chiffrement ultra-sécurisé** avec AES-256-GCM (authentification par chunk)
 - 🎮 **Mode interactif** - Interface guidée sans ligne de commande complexe
+- 🔑 **Prompt interactif pour mot de passe** - Plus besoin d'exposer le mot de passe dans la ligne de commande
 - 🚀 **Traitement parallèle** configurable (jusqu'à 2×CPU cores)
 - 📦 **Mode streaming pur** - mémoire constante (O(1))
 - 💻 **Interface colorée** avec barre de progression
@@ -66,7 +67,7 @@ cryptool interact
 
 ```
 ╔════════════════════════════════════════════════════════════════════╗
-║                    🎮 CRYPTOOL - MODE INTERACTIF                    ║
+║                    🎮 CRYPTOOL - MODE INTERACTIF                   ║
 ║                                                                    ║
 ║  Suivez les invites pour chiffrer ou déchiffrer vos fichiers       ║
 ║  Toutes les entrées seront validées avant exécution                ║
@@ -110,13 +111,24 @@ cryptool interact
 
 ## Commandes de base
 
-### Mode non-interactif (CLI classique)
+### Mode interactif (recommandé pour usage manuel)
 
 ```bash
-# Chiffrer un fichier
-cryptool encrypt monfichier.txt monfichier.enc --pass "monMotDePasse"
+# Lance le mode interactif avec prompts guidés
+cryptool interact
+```
 
-# Déchiffrer un fichier
+### Mode non-interactif (CLI classique)
+
+Le flag `--pass` est désormais **optionnel**. Si omis, le mot de passe est demandé interactivement :
+
+```bash
+# Avec prompt interactif (recommandé)
+cryptool encrypt monfichier.txt monfichier.enc
+cryptool decrypt monfichier.enc monfichier.txt
+
+# Avec flag --pass (pour scripts/automatisation)
+cryptool encrypt monfichier.txt monfichier.enc --pass "monMotDePasse"
 cryptool decrypt monfichier.enc monfichier.txt --pass "monMotDePasse"
 
 # Aide
@@ -124,18 +136,11 @@ cryptool --help
 cryptool encrypt --help
 ```
 
-### Mode interactif
-
-```bash
-# Lancer le mode interactif
-cryptool interact
-```
-
 ## Options importantes
 
 | Option | Description |
 |--------|-------------|
-| `--pass, -p` | Votre mot de passe (obligatoire en mode CLI) |
+| `--pass, -p` | Mot de passe (optionnel - sera demandé interactivement si omis) |
 | `--workers, -w` | Accélération pour gros fichiers (défaut: 4, max: 2×CPU) |
 | `--force, -f` | Écraser sans demander confirmation |
 | `--quiet, -q` | Mode silencieux (pas de barre de progression) |
@@ -145,10 +150,13 @@ cryptool interact
 ### 📄 Documents personnels
 
 ```bash
-# Mode CLI
+# Recommandé - avec prompt interactif
+cryptool encrypt declaration-2024.pdf declaration-2024.pdf.enc
+
+# Pour scripts - avec flag --pass
 cryptool encrypt declaration-2024.pdf declaration-2024.pdf.enc --pass "MotDePasseFort123!"
 
-# Mode interactif
+# Mode interactif complet
 cryptool interact
 # → Choisir "Chiffrer" → suivre les invites
 ```
@@ -156,36 +164,52 @@ cryptool interact
 ### 🎥 Vidéos (gros fichiers)
 
 ```bash
-# Avec optimisation parallèle (8 workers)
+# Avec optimisation parallèle (8 workers) et prompt interactif
+cryptool encrypt video.mp4 video.mp4.enc --workers 8
+
+# Avec flag --pass pour scripts
 cryptool encrypt video.mp4 video.mp4.enc --pass "Vacances2024!" --workers 8
 ```
 
 ### 📦 Chiffrement de dossier
 
 ```bash
-# Compresser + chiffrer
-tar czf - dossier/ | cryptool encrypt /dev/stdin backup.enc --pass "Archive2024!"
+# Compresser + chiffrer (avec prompt)
+tar czf - dossier/ | cryptool encrypt /dev/stdin backup.enc
 
-# Déchiffrer + décompresser
-cryptool decrypt backup.enc /dev/stdout --pass "Archive2024!" | tar xzf -
+# Déchiffrer + décompresser (avec prompt)
+cryptool decrypt backup.enc /dev/stdout | tar xzf -
 ```
 
 ## Dépannage rapide
 
 | Problème | Cause probable | Solution |
 |----------|---------------|----------|
-| `pass required` | Mot de passe oublié | Ajouter `--pass` ou utiliser mode interactif |
 | `le fichier n'existe pas` | Fichier source introuvable | Vérifier le chemin |
-| `le fichier existe déjà` | Fichier destination existe | Utiliser `--force` ou mode interactif (demande confirmation) |
-| `le mot de passe ne correspond pas` | Confirmation erronée | Mode interactif : ressaisir correctement |
+| `le fichier existe déjà` | Fichier destination existe | Utiliser `--force` ou confirmer l'écrasement |
+| `le mot de passe ne correspond pas` | Confirmation erronée (chiffrement) | Ressaisir correctement |
+| `le mot de passe ne peut pas être vide` | Aucun mot de passe fourni | Saisir un mot de passe valide |
 | `header authentication failed` | Mot de passe incorrect | Vérifier la casse et les caractères spéciaux |
 
-### Exigences des mots de passe (mode interactif)
+### Exigences des mots de passe (chiffrement interactif)
+
+Lorsque vous chiffrez un fichier sans utiliser le flag `--pass`, le mode interactif valide la force du mot de passe :
 
 - Minimum **8 caractères**
 - Au moins **une majuscule** (A-Z)
 - Au moins **une minuscule** (a-z)
 - Au moins **un chiffre** (0-9)
+
+> 💡 **Note** : Le flag `--pass` contourne cette validation pour les scripts.
+
+### Sécurité des mots de passe
+
+| Méthode | Sécurité | Usage recommandé |
+|---------|----------|------------------|
+| Prompt interactif | ✅✅✅ Très bonne | Usage manuel |
+| Flag `--pass` | ⚠️ Visible dans `ps aux` | Scripts (environnement contrôlé) |
+
+> ⚠️ **Avertissement** : Évitez le flag `--pass` sur les systèmes multi-utilisateurs car la ligne de commande est visible par tous les processus (`ps aux`, `/proc/.../cmdline`). Préférez le prompt interactif pour une meilleure sécurité.
 
 ---
 
@@ -202,6 +226,7 @@ crypto-aes-gcm/
 ├── internal/
 │   ├── argon2/             # Dérivation de clé Argon2id
 │   ├── cli/                # Commandes Cobra (encrypt, decrypt, interact)
+│   │   └── password.go     # Gestion interactive des mots de passe
 │   ├── header/             # Sérialisation et validation des headers
 │   ├── service/            # Orchestration métier
 │   ├── ui/                 # Interface utilisateur (couleurs, prompts, progress)
@@ -213,7 +238,7 @@ crypto-aes-gcm/
 │       ├── stream.go       # API streaming simplifiée (DecryptStream)
 │       ├── types.go        # Types et constantes
 │       ├── errors.go       # Erreurs sentinelles
-│       └── *_test.go       # Tests complets (>70 tests)
+│       └── *_test.go       # Tests complets (>150 tests)
 ├── tests/                  # Tests shell et scénarios
 │   ├── run_tests.sh        # Scripts de test réalistes
 │   ├── test_scenarios.sh   # Scénarios avancés
@@ -263,6 +288,13 @@ type Decryptor struct {
     // champs non exportés
 }
 
+// EncryptorConfig holds configuration options for the Encryptor
+type EncryptorConfig struct {
+    Workers          int  // Parallel workers (default: 4)
+    ChunkSize        int  // Chunk size in bytes (default: 1MB)
+    MaxPendingChunks int  // Max out-of-order chunks buffered (default: 100)
+}
+
 // FileHeader represents the encrypted file header
 type FileHeader struct {
     Magic     [4]byte    // "CRYP"
@@ -276,14 +308,15 @@ type FileHeader struct {
 
 ```go
 const (
-    Magic            = "CRYP"
-    Version          = 2
-    SaltSize         = 16
-    NonceSize        = 12
-    KeySize          = 32
-    DefaultChunkSize = 1024 * 1024  // 1MB
-    DefaultWorkers   = 4
-    MaxPendingChunks = 100          // Anti-DoS
+    Magic                  = "CRYP"
+    Version                = 2
+    SaltSize               = 16
+    NonceSize              = 12
+    KeySize                = 32
+    DefaultChunkSize       = 1024 * 1024  // 1MB
+    DefaultWorkers         = 4
+    DefaultMaxPendingChunks = 100         // Anti-DoS
+    MaxMaxPendingChunks     = 1000        // Absolute maximum
 )
 ```
 
@@ -292,6 +325,7 @@ const (
 ```go
 // Encryptor
 func NewEncryptor(workers int) (*Encryptor, error)
+func NewEncryptorWithConfig(config EncryptorConfig) (*Encryptor, error)
 func (e *Encryptor) EncryptFile(inputPath, outputPath, passphrase string) error
 func (e *Encryptor) Encrypt(r io.Reader, w io.Writer, passphrase string) error
 
@@ -302,6 +336,9 @@ func (d *Decryptor) Decrypt(r io.Reader, w io.Writer) error
 
 // Convenience function
 func DecryptStream(r io.Reader, w io.Writer, passphrase string) error
+
+// Default configuration
+func DefaultEncryptorConfig() EncryptorConfig
 ```
 
 ### Erreurs
@@ -324,8 +361,8 @@ make help
 # 🚀 Run (exécution directe sans build)
 make run-interact          # Mode interactif
 make run-version           # Affiche la version
-make run ARGS="encrypt test.txt test.enc --pass pwd"  # Arguments personnalisés
-make run-encrypt INPUT=file.txt OUTPUT=file.enc PASS=secret
+make run ARGS="encrypt test.txt test.enc"  # Arguments personnalisés (prompt pour mot de passe)
+make run-encrypt INPUT=file.txt OUTPUT=file.enc PASS=secret  # Avec flag --pass
 make run-decrypt INPUT=file.enc OUTPUT=file.txt PASS=secret
 
 # 🔨 Build
@@ -371,7 +408,7 @@ make release              # Créer une release
 ## Tests
 
 ```bash
-# Tous les tests Go (>110 tests)
+# Tous les tests Go (>150 tests)
 make test
 
 # Tests avec gotestsum (formatage amélioré)
@@ -504,4 +541,4 @@ Ce logiciel est fourni "tel quel". Pour des données extrêmement sensibles, con
 
 **Made with 🔐 by andydefer**
 
-*Version 2.0.0 - Mode interactif + Streaming pur + Authentification par chunk*
+*Version 2.0.0 - Mode interactif + Prompt mot de passe + Streaming pur + Authentification par chunk*
