@@ -47,13 +47,18 @@ const (
 	// on most systems. Workers are automatically clamped to 2×CPU cores.
 	DefaultWorkers = 4
 
-	// MaxPendingChunks limits the number of out-of-order chunks buffered in memory
+	// DefaultMaxPendingChunks is the default limit of out-of-order chunks buffered in memory
 	// during encryption to prevent memory exhaustion attacks.
 	//
 	// When parallel encryption produces chunks out of order, they are buffered
 	// until earlier chunks are written. This limit prevents attackers from
 	// causing unbounded memory growth.
-	MaxPendingChunks = 100
+	DefaultMaxPendingChunks = 100
+
+	// MaxMaxPendingChunks is the absolute maximum allowed value for pending chunks.
+	//
+	// This prevents excessive memory allocation even if a user specifies a very large value.
+	MaxMaxPendingChunks = 1000
 )
 
 // FileHeader represents the header structure at the beginning of every encrypted file.
@@ -78,4 +83,32 @@ type FileHeader struct {
 
 	// ChunkSize specifies the size of each encrypted chunk in bytes
 	ChunkSize uint32
+}
+
+// EncryptorConfig holds configuration options for the Encryptor.
+//
+// This allows users to customize the encryption behavior including
+// the maximum number of pending chunks allowed in memory.
+type EncryptorConfig struct {
+	// Workers is the number of parallel encryption workers.
+	// Default: DefaultWorkers (4)
+	Workers int
+
+	// ChunkSize is the size of each chunk in bytes.
+	// Default: DefaultChunkSize (1MB)
+	ChunkSize int
+
+	// MaxPendingChunks limits the number of out-of-order chunks buffered.
+	// Default: DefaultMaxPendingChunks (100)
+	// Maximum: MaxMaxPendingChunks (1000)
+	MaxPendingChunks int
+}
+
+// DefaultEncryptorConfig returns the default configuration for Encryptor.
+func DefaultEncryptorConfig() EncryptorConfig {
+	return EncryptorConfig{
+		Workers:          DefaultWorkers,
+		ChunkSize:        DefaultChunkSize,
+		MaxPendingChunks: DefaultMaxPendingChunks,
+	}
 }

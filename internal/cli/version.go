@@ -2,9 +2,11 @@
 package cli
 
 import (
+	"fmt"
+	"io"
 	"runtime"
 
-	"github.com/andydefer/crypto-aes-gcm/internal/ui"
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
@@ -24,28 +26,38 @@ func NewVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Show version information",
 		Long:  "Display cryptool version, build information, and system details",
-		Run: func(cmd *cobra.Command, args []string) {
-			printVersion()
+		RunE: func(cmd *cobra.Command, args []string) error {
+			printVersionToWriter(cmd.OutOrStdout())
+			return nil
 		},
 	}
 }
 
-// printVersion displays the version banner and system information.
-//
-// The output includes:
-//   - ASCII art banner with application name and version
-//   - List of cryptographic algorithms used
-//   - Go runtime version
-//   - Target OS and architecture
-//   - Number of available CPU cores
-func printVersion() {
-	ui.HeaderColor.Printf(`
+// printVersionToWriter displays the version banner and system information
+// to the specified writer.
+func printVersionToWriter(w io.Writer) {
+	// Use color.New with the specific writer for colored output
+	headerColor := color.New(color.FgMagenta, color.Bold)
+	headerColor.SetWriter(w)
+
+	header := `
 ╔═══════════════════════════════════════╗
 ║  🔐 CRYPTOOL - AES-GCM v2.0.0         ║
 ║  AES-256-GCM | Argon2id | Parallel    ║
 ╚═══════════════════════════════════════╝
-`)
-	ui.InfoColor.Printf("\n  📦 Build: %s\n", runtime.Version())
-	ui.InfoColor.Printf("  🖥️  OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-	ui.InfoColor.Printf("  💻 CPUs: %d\n\n", runtime.NumCPU())
+`
+	headerColor.Fprint(w, header)
+
+	infoColor := color.New(color.FgCyan, color.Bold)
+	infoColor.SetWriter(w)
+
+	info := fmt.Sprintf("\n  📦 Build: %s\n  🖥️  OS/Arch: %s/%s\n  💻 CPUs: %d\n\n",
+		runtime.Version(), runtime.GOOS, runtime.GOARCH, runtime.NumCPU())
+
+	infoColor.Fprint(w, info)
+}
+
+// printVersion maintains backward compatibility for existing code
+func printVersion() {
+	printVersionToWriter(color.Output)
 }

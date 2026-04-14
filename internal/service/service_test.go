@@ -130,6 +130,66 @@ func TestValidateWorkerCountEdgeCases(t *testing.T) {
 	}
 }
 
+// TestExecuteEncryptionWithConfig verifies encryption with custom configuration.
+func TestExecuteEncryptionWithConfig(t *testing.T) {
+	tempDir := t.TempDir()
+	inputFile := filepath.Join(tempDir, "input.txt")
+	outputFile := filepath.Join(tempDir, "output.enc")
+
+	content := []byte("test content for custom config encryption")
+	if err := os.WriteFile(inputFile, content, 0644); err != nil {
+		t.Fatalf("failed to create input file: %v", err)
+	}
+
+	config := cryptolib.EncryptorConfig{
+		Workers:          4,
+		ChunkSize:        64 * 1024,
+		MaxPendingChunks: 30,
+	}
+
+	err := ExecuteEncryptionWithConfig(inputFile, outputFile, "test-password", config, true)
+	if err != nil {
+		t.Errorf("ExecuteEncryptionWithConfig failed: %v", err)
+	}
+
+	if _, err := os.Stat(outputFile); err != nil {
+		t.Error("output file was not created")
+	}
+}
+
+// TestExecuteEncryptionWithConfig_InvalidInput verifies error handling.
+func TestExecuteEncryptionWithConfig_InvalidInput(t *testing.T) {
+	config := cryptolib.DefaultEncryptorConfig()
+
+	err := ExecuteEncryptionWithConfig("nonexistent.txt", "output.enc", "password", config, true)
+	if err == nil {
+		t.Error("expected error for non-existent input file")
+	}
+}
+
+// TestValidateWorkerCountWithCustomConfig verifies worker count validation.
+func TestValidateWorkerCountEdgeCasesWithConfig(t *testing.T) {
+	tests := []struct {
+		name      string
+		requested int
+		expected  int
+	}{
+		{"zero workers", 0, cryptolib.DefaultWorkers},
+		{"negative workers", -1, cryptolib.DefaultWorkers},
+		{"one worker", 1, 1},
+		{"default workers", cryptolib.DefaultWorkers, cryptolib.DefaultWorkers},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ValidateWorkerCount(tt.requested, true)
+			if result != tt.expected {
+				t.Errorf("ValidateWorkerCount(%d) = %d, want %d", tt.requested, result, tt.expected)
+			}
+		})
+	}
+}
+
 // TestExecuteEncryptionWithValidInput verifies that encryption successfully
 // processes a valid input file and creates the expected output file.
 func TestExecuteEncryptionWithValidInput(t *testing.T) {

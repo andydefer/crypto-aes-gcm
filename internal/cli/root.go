@@ -66,8 +66,8 @@ Examples:
   # Silent mode (no progress bar)
   cryptool encrypt log.txt log.enc --pass "secret" --quiet
 `,
-	Run: func(cmd *cobra.Command, args []string) {
-		_ = cmd.Help()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmd.Help()
 	},
 }
 

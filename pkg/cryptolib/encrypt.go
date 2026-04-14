@@ -22,9 +22,10 @@ import (
 
 // Encryptor handles parallel streaming encryption of data.
 type Encryptor struct {
-	workers    int
-	chunkSize  int
-	bufferPool sync.Pool
+	workers          int
+	chunkSize        int
+	maxPendingChunks int
+	bufferPool       sync.Pool
 }
 
 // chunkJob represents a single chunk of plaintext to be encrypted.
@@ -41,20 +42,62 @@ type chunkResult struct {
 
 // NewEncryptor creates an Encryptor with the specified number of workers.
 // The worker count is clamped between 1 and 2×CPU cores.
+// Deprecated: Use NewEncryptorWithConfig instead for full configuration.
 func NewEncryptor(workers int) (*Encryptor, error) {
+	return NewEncryptorWithConfig(EncryptorConfig{
+		Workers:          workers,
+		ChunkSize:        DefaultChunkSize,
+		MaxPendingChunks: DefaultMaxPendingChunks,
+	})
+}
+
+// NewEncryptorWithConfig creates an Encryptor with the provided configuration.
+//
+// The configuration values are validated and clamped to safe ranges:
+//   - Workers: clamped between 1 and 2×CPU cores
+//   - ChunkSize: clamped between 1KB and 1GB
+//   - MaxPendingChunks: clamped between 1 and MaxMaxPendingChunks (1000)
+//
+// Returns an error if the configuration is invalid after clamping.
+func NewEncryptorWithConfig(config EncryptorConfig) (*Encryptor, error) {
+	// Validate and clamp workers
+	workers := config.Workers
 	if workers <= 0 {
 		workers = DefaultWorkers
 	}
-	if workers > runtime.NumCPU()*2 {
-		workers = runtime.NumCPU() * 2
+	maxWorkers := runtime.NumCPU() * 2
+	if workers > maxWorkers {
+		workers = maxWorkers
+	}
+
+	// Validate and clamp chunk size
+	chunkSize := config.ChunkSize
+	if chunkSize <= 0 {
+		chunkSize = DefaultChunkSize
+	}
+	if chunkSize < header.MinChunkSize {
+		chunkSize = header.MinChunkSize
+	}
+	if chunkSize > header.MaxChunkSize {
+		chunkSize = header.MaxChunkSize
+	}
+
+	// Validate and clamp max pending chunks
+	maxPending := config.MaxPendingChunks
+	if maxPending <= 0 {
+		maxPending = DefaultMaxPendingChunks
+	}
+	if maxPending > MaxMaxPendingChunks {
+		maxPending = MaxMaxPendingChunks
 	}
 
 	return &Encryptor{
-		workers:   workers,
-		chunkSize: DefaultChunkSize,
+		workers:          workers,
+		chunkSize:        chunkSize,
+		maxPendingChunks: maxPending,
 		bufferPool: sync.Pool{
 			New: func() interface{} {
-				buffer := make([]byte, DefaultChunkSize)
+				buffer := make([]byte, chunkSize)
 				return &buffer
 			},
 		},
@@ -241,14 +284,14 @@ func (e *Encryptor) readChunks(reader io.Reader, jobs chan<- chunkJob) {
 // writeResults writes ciphertext chunks in order with bounded memory usage.
 //
 // This function maintains a pending map for out-of-order chunks and limits
-// the maximum pending size to prevent memory exhaustion attacks.
+// the maximum pending size using e.maxPendingChunks to prevent memory exhaustion attacks.
 func (e *Encryptor) writeResults(results <-chan chunkResult, writer io.Writer) error {
 	expectedIndex := uint64(0)
 	pending := make(map[uint64][]byte)
 
 	for result := range results {
-		if len(pending) > MaxPendingChunks {
-			return fmt.Errorf("too many pending chunks (limit %d) - possible reordering attack", MaxPendingChunks)
+		if len(pending) > e.maxPendingChunks {
+			return fmt.Errorf("too many pending chunks (limit %d) - possible reordering attack", e.maxPendingChunks)
 		}
 
 		pending[result.index] = result.ciphertext

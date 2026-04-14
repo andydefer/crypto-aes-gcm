@@ -7,7 +7,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/andydefer/crypto-aes-gcm/internal/service"
 	"github.com/andydefer/crypto-aes-gcm/internal/ui"
@@ -48,7 +47,7 @@ Examples:
   cryptool decrypt data.enc output.txt --pass secure123 --force
   cryptool decrypt large.enc result.bin --pass pass123 --workers 8 --quiet`,
 		Args: cobra.ExactArgs(2),
-		Run:  runDecrypt,
+		RunE: runDecrypt,
 	}
 
 	cmd.Flags().StringVarP(&pass, "pass", "p", "", "Passphrase used for encryption (required)")
@@ -63,19 +62,22 @@ Examples:
 // runDecrypt executes the decryption operation.
 //
 // It performs validation steps and delegates the actual work to the service layer.
-// On any error, it prints an error message and exits with code 1.
+// On any error, it prints an error message and returns the error.
 //
 // Parameters:
 //   - cmd: The Cobra command (provides stderr output)
 //   - args: Command arguments containing input and output file paths
-func runDecrypt(cmd *cobra.Command, args []string) {
+//
+// Returns:
+//   - error: Any error encountered during decryption, or nil on success
+func runDecrypt(cmd *cobra.Command, args []string) error {
 	input := args[0]
 	output := args[1]
 
 	// Validate input file exists
 	if err := service.ValidateInputFile(input); err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 
 	// Check for existing output file with interactive confirmation
@@ -89,16 +91,18 @@ func runDecrypt(cmd *cobra.Command, args []string) {
 		result, errPrompt := prompt.Run()
 		if errPrompt != nil || (result != "y" && result != "Y") {
 			ui.InfoColor.Println("❌ Opération annulée")
-			os.Exit(0)
+			return nil
 		}
 	} else if err != nil && err != service.ErrFileExists {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 
 	// Execute decryption
 	if err := service.ExecuteDecryption(input, output, pass, quiet); err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
+
+	return nil
 }

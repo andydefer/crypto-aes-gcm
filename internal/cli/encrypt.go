@@ -7,7 +7,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/andydefer/crypto-aes-gcm/internal/service"
 	"github.com/andydefer/crypto-aes-gcm/internal/ui"
@@ -48,7 +47,7 @@ Examples:
   cryptool encrypt data.txt output.enc --pass secure123 --force
   cryptool encrypt large.bin result.enc --pass pass123 --workers 8 --quiet`,
 		Args: cobra.ExactArgs(2),
-		Run:  runEncrypt,
+		RunE: runEncrypt,
 	}
 
 	cmd.Flags().StringVarP(&pass, "pass", "p", "", "Passphrase for encryption (required)")
@@ -64,12 +63,15 @@ Examples:
 //
 // It validates the input file, checks for output file conflicts, validates
 // the worker count, and delegates the actual encryption to the service layer.
-// On any error, it prints an error message and exits with code 1.
+// On any error, it prints an error message and returns the error.
 //
 // Parameters:
 //   - cmd: The Cobra command (provides stderr output)
 //   - args: Command arguments containing input and output file paths
-func runEncrypt(cmd *cobra.Command, args []string) {
+//
+// Returns:
+//   - error: Any error encountered during encryption, or nil on success
+func runEncrypt(cmd *cobra.Command, args []string) error {
 	input := args[0]
 	output := args[1]
 
@@ -78,7 +80,7 @@ func runEncrypt(cmd *cobra.Command, args []string) {
 	// Validate input file exists
 	if err := service.ValidateInputFile(input); err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 
 	// Check for existing output file with interactive confirmation
@@ -92,16 +94,18 @@ func runEncrypt(cmd *cobra.Command, args []string) {
 		result, errPrompt := prompt.Run()
 		if errPrompt != nil || (result != "y" && result != "Y") {
 			ui.InfoColor.Println("❌ Opération annulée")
-			os.Exit(0)
+			return nil
 		}
 	} else if err != nil && err != service.ErrFileExists {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 
 	// Execute encryption
 	if err := service.ExecuteEncryption(input, output, pass, workerCount, quiet); err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
+
+	return nil
 }

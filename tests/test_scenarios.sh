@@ -36,7 +36,7 @@ FAILED_SCENARIOS=0
 print_header() {
     echo ""
     echo -e "${MAGENTA}╔════════════════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${MAGENTA}║                         🎬 CRYPTOOL - SCÉNARIOS DE TEST                         ║${NC}"
+    echo -e "${MAGENTA}║                         🎬 CRYPTOOL - SCÉNARIOS DE TEST                        ║${NC}"
     echo -e "${MAGENTA}╚════════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -864,7 +864,7 @@ run_all_scenarios() {
 print_summary() {
     echo ""
     echo -e "${MAGENTA}╔════════════════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${MAGENTA}│                                   RÉSUMÉ                                      │${NC}"
+    echo -e "${MAGENTA}│                                   RÉSUMÉ                                       │${NC}"
     echo -e "${MAGENTA}╚════════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo -e "  📊 Scénarios total:   ${TOTAL_SCENARIOS}"
@@ -881,7 +881,7 @@ print_summary() {
     else
         echo ""
         echo -e "${RED}╔════════════════════════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${RED}║                    ❌ CERTAINS SCÉNARIOS ONT ÉCHOUÉ ❌                          ║${NC}"
+        echo -e "${RED}║                    ❌ CERTAINS SCÉNARIOS ONT ÉCHOUÉ ❌                         ║${NC}"
         echo -e "${RED}╚════════════════════════════════════════════════════════════════════════════════╝${NC}"
         echo ""
         echo "  Vérifiez les logs: $LOG_FILE"

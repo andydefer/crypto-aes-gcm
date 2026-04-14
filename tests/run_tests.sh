@@ -29,7 +29,7 @@ SHORT_MODE="false"
 print_header() {
     echo ""
     echo -e "${MAGENTA}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${MAGENTA}║                    🔐 CRYPTOOL - TESTS RÉALISTES               ║${NC}"
+    echo -e "${MAGENTA}║                    🔐 CRYPTOOL - TESTS RÉALISTES             ║${NC}"
     echo -e "${MAGENTA}╚══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -608,7 +608,7 @@ main() {
     # Résumé
     echo ""
     echo -e "${MAGENTA}════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${MAGENTA}                          RÉSULTATS                              ${NC}"
+    echo -e "${MAGENTA}                          RÉSULTATS                             ${NC}"
     echo -e "${MAGENTA}════════════════════════════════════════════════════════════════${NC}"
     echo -e "Total:  ${TOTAL_TESTS}"
     echo -e "Passed: ${GREEN}${PASSED_TESTS}${NC}"

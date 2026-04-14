@@ -26,7 +26,7 @@ func NewInteractCmd() *cobra.Command {
 		Use:   "interact",
 		Short: "🎮 Interactive mode",
 		Long:  "Run cryptool in interactive mode with guided prompts for all inputs",
-		Run:   runInteractive,
+		RunE:  runInteractive,
 	}
 }
 
@@ -34,7 +34,10 @@ func NewInteractCmd() *cobra.Command {
 //
 // It displays the welcome header and enters a loop that repeatedly presents
 // the operation menu until the user chooses to exit or sends Ctrl+D.
-func runInteractive(cmd *cobra.Command, args []string) {
+//
+// Returns:
+//   - error: nil always (interactive mode exits via os.Exit or normal flow)
+func runInteractive(cmd *cobra.Command, args []string) error {
 	ui.PrintInteractiveHeader()
 
 	for {
@@ -48,7 +51,7 @@ func runInteractive(cmd *cobra.Command, args []string) {
 			runInteractiveDecrypt()
 		case "exit":
 			ui.PrintInteractiveGoodbye()
-			return
+			return nil
 		}
 	}
 }

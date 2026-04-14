@@ -49,7 +49,69 @@ func ExecuteEncryption(input, output, password string, workerCount int, quiet bo
 		bar = &noopProgressBar{}
 	}
 
+	// Create encryptor with default configuration
 	encryptor, err := cryptolib.NewEncryptor(workerCount)
+	if err != nil {
+		return err
+	}
+
+	inputFile, err := openFile(input)
+	if err != nil {
+		return err
+	}
+	defer inputFile.Close()
+
+	reader := &progressReader{
+		r:     inputFile,
+		bar:   bar,
+		total: fileSize,
+	}
+
+	outFile, err := os.Create(output)
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	if err := encryptor.Encrypt(reader, outFile, password); err != nil {
+		_ = bar.Clear()
+		return err
+	}
+
+	_ = bar.Finish()
+	ui.PrintSuccess(output, fileSize)
+	return nil
+}
+
+// ExecuteEncryptionWithConfig performs encryption with custom encryptor configuration.
+//
+// This function allows fine-grained control over the encryption parameters including
+// chunk size and maximum pending chunks limit.
+//
+// Parameters:
+//   - input: Path to the plaintext source file
+//   - output: Path where encrypted data will be written
+//   - password: Passphrase used for encryption
+//   - config: Encryptor configuration (workers, chunk size, max pending chunks)
+//   - quiet: If true, suppresses progress bar output
+//
+// Returns:
+//   - error: Any error encountered during encryption
+func ExecuteEncryptionWithConfig(input, output, password string, config cryptolib.EncryptorConfig, quiet bool) error {
+	fileInfo, err := os.Stat(input)
+	if err != nil {
+		return err
+	}
+	fileSize := fileInfo.Size()
+
+	var bar ui.ProgressBar
+	if !quiet {
+		bar = ui.CreateProgressBar(fileSize, "🔒 Encrypting")
+	} else {
+		bar = &noopProgressBar{}
+	}
+
+	encryptor, err := cryptolib.NewEncryptorWithConfig(config)
 	if err != nil {
 		return err
 	}

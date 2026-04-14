@@ -255,6 +255,69 @@ func TestEncryptor_MemoryUsage(t *testing.T) {
 	}
 }
 
+// TestEncryptorWithCustomConfig verifies the new configuration API works.
+func TestEncryptorWithCustomConfig(t *testing.T) {
+	testData := []byte("test data for custom config")
+
+	config := EncryptorConfig{
+		Workers:          2,
+		ChunkSize:        32 * 1024, // 32KB chunks
+		MaxPendingChunks: 20,
+	}
+
+	encryptor, err := NewEncryptorWithConfig(config)
+	if err != nil {
+		t.Fatalf("failed to create encryptor: %v", err)
+	}
+
+	var encryptedBuf bytes.Buffer
+	reader := bytes.NewReader(testData)
+
+	if err := encryptor.Encrypt(reader, &encryptedBuf, "custom-password"); err != nil {
+		t.Fatalf("encryption failed: %v", err)
+	}
+
+	var decryptedBuf bytes.Buffer
+	encryptedReader := bytes.NewReader(encryptedBuf.Bytes())
+
+	if err := DecryptStream(encryptedReader, &decryptedBuf, "custom-password"); err != nil {
+		t.Fatalf("decryption failed: %v", err)
+	}
+
+	if !bytes.Equal(testData, decryptedBuf.Bytes()) {
+		t.Errorf("data mismatch")
+	}
+}
+
+// TestNewEncryptorBackwardCompatibility verifies the old API still works.
+func TestNewEncryptorBackwardCompatibility(t *testing.T) {
+	testData := []byte("backward compatibility test")
+
+	// Old API
+	encryptor, err := NewEncryptor(DefaultWorkers)
+	if err != nil {
+		t.Fatalf("NewEncryptor failed: %v", err)
+	}
+
+	var encryptedBuf bytes.Buffer
+	reader := bytes.NewReader(testData)
+
+	if err := encryptor.Encrypt(reader, &encryptedBuf, "password"); err != nil {
+		t.Fatalf("encryption failed: %v", err)
+	}
+
+	var decryptedBuf bytes.Buffer
+	encryptedReader := bytes.NewReader(encryptedBuf.Bytes())
+
+	if err := DecryptStream(encryptedReader, &decryptedBuf, "password"); err != nil {
+		t.Fatalf("decryption failed: %v", err)
+	}
+
+	if !bytes.Equal(testData, decryptedBuf.Bytes()) {
+		t.Errorf("data mismatch")
+	}
+}
+
 // createTempFile creates a temporary file with the provided data.
 //
 // Parameters:
