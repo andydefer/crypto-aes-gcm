@@ -1,10 +1,11 @@
-// Package cli provides the command-line interface for aesaesaescryptool.
+// Package cli provides the command-line interface for aescryptool.
 package cli
 
 import (
 	"fmt"
 	"io"
 	"runtime"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -21,7 +22,7 @@ func NewVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Show version information",
-		Long:  "Display aesaesaescryptool version, build information, and system details",
+		Long:  "Display aescryptool version, build information, and system details",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			printVersion(cmd.OutOrStdout())
 			return nil
@@ -35,24 +36,44 @@ func printVersion(w io.Writer) {
 	printBuildInfo(w)
 }
 
-// printBanner writes the ASCII art banner to w.
+// printBanner writes the ASCII art banner to w (sans barres verticales).
 func printBanner(w io.Writer) {
 	headerColor := color.New(color.FgMagenta, color.Bold)
 	headerColor.SetWriter(w)
 
-	line := "════════════════════════════════════════"
+	// Largeur totale de la boîte : 52 caractères
+	width := 52
+
+	// Construction de la ligne horizontale
+	horizontalLine := strings.Repeat("═", width)
+
+	// Centrage du texte dans une largeur donnée
+	centerText := func(text string, width int) string {
+		textLen := len(text)
+		if textLen >= width {
+			return text
+		}
+		padding := (width - textLen) / 2
+		return strings.Repeat(" ", padding) + text + strings.Repeat(" ", width-padding-textLen)
+	}
+
+	// Ligne 1: "🔐 AESCRYPTOOL - v2.0.0"
+	line1 := fmt.Sprintf("🔐 %s - %s", appName, appVersion)
+	line1Centered := centerText(line1, width)
+
+	// Ligne 2: cryptoAlgos
+	line2Centered := centerText(cryptoAlgos, width)
 
 	banner := fmt.Sprintf(`
 ╔%s╗
-║  🔐 %s - %s ║
-║  %s ║
+%s
+%s
 ╚%s╝
 `,
-		line,
-		appName,
-		appVersion,
-		cryptoAlgos,
-		line,
+		horizontalLine,
+		line1Centered,
+		line2Centered,
+		horizontalLine,
 	)
 
 	headerColor.Fprint(w, banner)

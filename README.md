@@ -36,6 +36,10 @@ cd crypto-aes-gcm
 make build
 sudo cp build/aescryptool /usr/local/bin/
 
+# Ou installation automatique via Makefile
+make install              # Installation globale (/usr/local/bin)
+make install-local        # Installation locale (~/.local/bin)
+
 # Ou télécharger le binaire (releases)
 wget https://github.com/andydefer/crypto-aes-gcm/releases/latest/download/aescryptool-linux-amd64
 chmod +x aescryptool-linux-amd64
@@ -53,6 +57,7 @@ sudo mv aescryptool-linux-amd64 /usr/local/bin/aescryptool
 
 ```bash
 aescryptool version
+make install-check         # Vérifie si l'installation est correcte
 ```
 
 ## 🎮 Mode interactif
@@ -67,7 +72,7 @@ aescryptool interact
 
 ```
 ╔════════════════════════════════════════════════════════════════════╗
-║                    🎮 CRYPTOOL - MODE INTERACTIF                   ║
+║                 🎮 AESCRYPTOOL - MODE INTERACTIF                   ║
 ║                                                                    ║
 ║  Suivez les invites pour chiffrer ou déchiffrer vos fichiers       ║
 ║  Toutes les entrées seront validées avant exécution                ║
@@ -221,31 +226,31 @@ Lorsque vous chiffrez un fichier sans utiliser le flag `--pass`, le mode interac
 crypto-aes-gcm/
 ├── cmd/
 │   └── aescryptool/           # Application CLI (Cobra)
-│       ├── main.go         # Point d'entrée (bootstrap pur)
-│       └── main_test.go    # Tests unitaires
+│       ├── main.go            # Point d'entrée (bootstrap pur)
+│       └── main_test.go       # Tests unitaires
 ├── internal/
-│   ├── argon2/             # Dérivation de clé Argon2id
-│   ├── cli/                # Commandes Cobra (encrypt, decrypt, interact)
-│   │   └── password.go     # Gestion interactive des mots de passe
-│   ├── header/             # Sérialisation et validation des headers
-│   ├── service/            # Orchestration métier
-│   ├── ui/                 # Interface utilisateur (couleurs, prompts, progress)
-│   └── utils/              # Utilitaires (formatage taille)
+│   ├── argon2/                # Dérivation de clé Argon2id
+│   ├── cli/                   # Commandes Cobra (encrypt, decrypt, interact)
+│   │   └── password.go        # Gestion interactive des mots de passe
+│   ├── header/                # Sérialisation et validation des headers
+│   ├── service/               # Orchestration métier
+│   ├── ui/                    # Interface utilisateur (couleurs, prompts, progress)
+│   └── utils/                 # Utilitaires (formatage taille)
 ├── pkg/
-│   └── cryptolib/          # Bibliothèque exportable (cœur crypto)
-│       ├── encrypt.go      # Chiffrement parallèle
-│       ├── decrypt.go      # Déchiffrement streaming
-│       ├── stream.go       # API streaming simplifiée (DecryptStream)
-│       ├── types.go        # Types et constantes
-│       ├── errors.go       # Erreurs sentinelles
-│       └── *_test.go       # Tests complets (>150 tests)
-├── tests/                  # Tests shell et scénarios
-│   ├── run_tests.sh        # Scripts de test réalistes
-│   ├── test_scenarios.sh   # Scénarios avancés
+│   └── cryptolib/             # Bibliothèque exportable (cœur crypto)
+│       ├── encrypt.go         # Chiffrement parallèle
+│       ├── decrypt.go         # Déchiffrement streaming
+│       ├── stream.go          # API streaming simplifiée (DecryptStream)
+│       ├── types.go           # Types et constantes
+│       ├── errors.go          # Erreurs sentinelles
+│       └── *_test.go          # Tests complets (>150 tests)
+├── tests/                     # Tests shell et scénarios
+│   ├── run_tests.sh           # Scripts de test réalistes
+│   ├── test_scenarios.sh      # Scénarios avancés
 │   └── generate_test_files.sh
-├── build/                  # Binaires compilés
-├── private/                # Artefacts générés (diffs, concat)
-├── Makefile                # Commandes de build, tests, release
+├── build/                     # Binaires compilés
+├── private/                   # Artefacts générés (diffs, concat)
+├── Makefile                   # Commandes de build, tests, release, install
 └── README.md
 ```
 
@@ -269,8 +274,14 @@ make build
 # Tests
 make test
 
-# Installation locale
+# Installation (choisissez l'une des options)
+make install              # Installation globale (/usr/local/bin) - nécessite sudo
+make install-local        # Installation locale (~/.local/bin) - utilisateur uniquement
 go install ./cmd/aescryptool
+
+# Vérification
+make install-check
+aescryptool version
 ```
 
 ## API Reference
@@ -368,6 +379,13 @@ make run-decrypt INPUT=file.enc OUTPUT=file.txt PASS=secret
 # 🔨 Build
 make build                 # Build pour plateforme courante
 make build-all             # Build multi-plateformes (Linux, Windows, macOS)
+
+# 📦 Installation
+make install               # Installation globale (/usr/local/bin) - nécessite sudo
+make install-local         # Installation locale (~/.local/bin) - utilisateur uniquement
+make uninstall             # Désinstallation globale et locale
+make reinstall             # Réinstallation complète
+make install-check         # Vérifie si l'installation est correcte
 
 # 🧪 Tests Go
 make test                  # Tous les tests Go
@@ -541,4 +559,5 @@ Ce logiciel est fourni "tel quel". Pour des données extrêmement sensibles, con
 
 **Made with 🔐 by andydefer**
 
-*Version 2.0.0 - Mode interactif + Prompt mot de passe + Streaming pur + Authentification par chunk*
+*Version 2.0.0 - Mode interactif + Prompt mot de passe + Installation automatique + Streaming pur + Authentification par chunk*
+
