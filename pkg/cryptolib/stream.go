@@ -13,6 +13,7 @@ import (
 	"io"
 
 	"github.com/andydefer/crypto-aes-gcm/internal/argon2"
+	"github.com/andydefer/crypto-aes-gcm/internal/crypto"
 	"github.com/andydefer/crypto-aes-gcm/internal/header"
 )
 
@@ -159,7 +160,7 @@ func decryptChunks(reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonc
 			return fmt.Errorf("read ciphertext chunk %d: %w", chunkIndex, err)
 		}
 
-		nonce := deriveStreamNonce(baseNonce, chunkIndex)
+		nonce := crypto.DeriveChunkNonce(baseNonce, chunkIndex)
 
 		plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 		if err != nil {
@@ -174,27 +175,4 @@ func decryptChunks(reader io.Reader, writer io.Writer, gcm cipher.AEAD, baseNonc
 	}
 
 	return nil
-}
-
-// deriveStreamNonce creates a chunk-specific nonce by XORing the base nonce
-// with the chunk index bytes.
-//
-// Parameters:
-//   - baseNonce: Base nonce from file header (12 bytes for GCM)
-//   - chunkIndex: Sequential index of the current chunk
-//
-// Returns:
-//   - []byte: Chunk-specific nonce (same length as baseNonce)
-func deriveStreamNonce(baseNonce []byte, chunkIndex uint64) []byte {
-	nonce := make([]byte, NonceSize)
-	copy(nonce, baseNonce)
-
-	indexBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(indexBytes, chunkIndex)
-
-	for i := 0; i < 8 && i < NonceSize-4; i++ {
-		nonce[4+i] ^= indexBytes[i]
-	}
-
-	return nonce
 }

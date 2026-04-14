@@ -55,10 +55,10 @@ Examples:
 		RunE: runDecrypt,
 	}
 
-	cmd.Flags().StringVarP(&pass, "pass", "p", "", "Passphrase used for encryption (optional - will prompt if omitted)")
-	cmd.Flags().IntVarP(&workers, "workers", "w", cryptolib.DefaultWorkers, "Number of parallel workers")
-	cmd.Flags().BoolVarP(&force, "force", "f", false, "Overwrite existing output file without confirmation")
-	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Suppress progress bar output")
+	cmd.Flags().StringVarP(&GlobalConfig.Pass, "pass", "p", "", "Passphrase used for encryption (optional - will prompt if omitted)")
+	cmd.Flags().IntVarP(&GlobalConfig.Workers, "workers", "w", cryptolib.DefaultWorkers, "Number of parallel workers")
+	cmd.Flags().BoolVarP(&GlobalConfig.Force, "force", "f", false, "Overwrite existing output file without confirmation")
+	cmd.Flags().BoolVarP(&GlobalConfig.Quiet, "quiet", "q", false, "Suppress progress bar output")
 
 	return cmd
 }
@@ -85,8 +85,8 @@ func runDecrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check for existing output file with interactive confirmation
-	err := service.CheckOverwrite(output, force)
-	if err == service.ErrFileExists && !force {
+	err := service.CheckOverwrite(output, GlobalConfig.Force)
+	if err == service.ErrFileExists && !GlobalConfig.Force {
 		prompt := promptui.Prompt{
 			Label:     fmt.Sprintf("Fichier '%s' existe déjà. Écraser ?", output),
 			IsConfirm: true,
@@ -104,14 +104,14 @@ func runDecrypt(cmd *cobra.Command, args []string) error {
 
 	// Resolve password (prompt if not provided via flag)
 	// For decryption, needConfirmation=false (single prompt, no confirmation)
-	password, err := resolvePassword(pass, false)
+	password, err := resolvePassword(GlobalConfig.Pass, false)
 	if err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
 		return err
 	}
 
 	// Execute decryption
-	if err := service.ExecuteDecryption(input, output, password, quiet); err != nil {
+	if err := service.ExecuteDecryption(input, output, password, GlobalConfig.Quiet); err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
 		return err
 	}

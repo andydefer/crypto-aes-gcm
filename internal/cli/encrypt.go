@@ -55,10 +55,10 @@ Examples:
 		RunE: runEncrypt,
 	}
 
-	cmd.Flags().StringVarP(&pass, "pass", "p", "", "Passphrase for encryption (optional - will prompt if omitted)")
-	cmd.Flags().IntVarP(&workers, "workers", "w", cryptolib.DefaultWorkers, "Number of parallel workers for chunk encryption")
-	cmd.Flags().BoolVarP(&force, "force", "f", false, "Overwrite existing output file without confirmation")
-	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Suppress progress bar output")
+	cmd.Flags().StringVarP(&GlobalConfig.Pass, "pass", "p", "", "Passphrase for encryption (optional - will prompt if omitted)")
+	cmd.Flags().IntVarP(&GlobalConfig.Workers, "workers", "w", cryptolib.DefaultWorkers, "Number of parallel workers for chunk encryption")
+	cmd.Flags().BoolVarP(&GlobalConfig.Force, "force", "f", false, "Overwrite existing output file without confirmation")
+	cmd.Flags().BoolVarP(&GlobalConfig.Quiet, "quiet", "q", false, "Suppress progress bar output")
 
 	return cmd
 }
@@ -79,7 +79,7 @@ func runEncrypt(cmd *cobra.Command, args []string) error {
 	input := args[0]
 	output := args[1]
 
-	workerCount := service.ValidateWorkerCount(workers, quiet)
+	workerCount := service.ValidateWorkerCount(GlobalConfig.Workers, GlobalConfig.Quiet)
 
 	// Validate input file exists
 	if err := service.ValidateInputFile(input); err != nil {
@@ -88,8 +88,8 @@ func runEncrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check for existing output file with interactive confirmation
-	err := service.CheckOverwrite(output, force)
-	if err == service.ErrFileExists && !force {
+	err := service.CheckOverwrite(output, GlobalConfig.Force)
+	if err == service.ErrFileExists && !GlobalConfig.Force {
 		prompt := promptui.Prompt{
 			Label:     fmt.Sprintf("Fichier '%s' existe déjà. Écraser ?", output),
 			IsConfirm: true,
@@ -107,14 +107,14 @@ func runEncrypt(cmd *cobra.Command, args []string) error {
 
 	// Resolve password (prompt if not provided via flag)
 	// For encryption, needConfirmation=true to require password confirmation
-	password, err := resolvePassword(pass, true)
+	password, err := resolvePassword(GlobalConfig.Pass, true)
 	if err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
 		return err
 	}
 
 	// Execute encryption
-	if err := service.ExecuteEncryption(input, output, password, workerCount, quiet); err != nil {
+	if err := service.ExecuteEncryption(input, output, password, workerCount, GlobalConfig.Quiet); err != nil {
 		ui.ErrorColor.Fprintf(cmd.ErrOrStderr(), "❌ Error: %v\n", err)
 		return err
 	}

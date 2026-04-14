@@ -17,6 +17,7 @@ import (
 	"sync"
 
 	"github.com/andydefer/crypto-aes-gcm/internal/argon2"
+	"github.com/andydefer/crypto-aes-gcm/internal/crypto"
 	"github.com/andydefer/crypto-aes-gcm/internal/header"
 )
 
@@ -217,7 +218,7 @@ func (e *Encryptor) encryptionWorker(gcm cipher.AEAD, baseNonce []byte, jobs <-c
 	defer waitGroup.Done()
 
 	for job := range jobs {
-		nonce := e.deriveChunkNonce(baseNonce, job.index)
+		nonce := crypto.DeriveChunkNonce(baseNonce, job.index)
 		ciphertext := gcm.Seal(nil, nonce, job.data, nil)
 
 		results <- chunkResult{
@@ -227,22 +228,6 @@ func (e *Encryptor) encryptionWorker(gcm cipher.AEAD, baseNonce []byte, jobs <-c
 
 		e.bufferPool.Put(&job.data)
 	}
-}
-
-// deriveChunkNonce creates a chunk-specific nonce by XORing the base nonce
-// with the chunk index bytes to prevent nonce reuse.
-func (e *Encryptor) deriveChunkNonce(baseNonce []byte, chunkIndex uint64) []byte {
-	nonce := make([]byte, NonceSize)
-	copy(nonce, baseNonce)
-
-	indexBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(indexBytes, chunkIndex)
-
-	for i := 0; i < 8 && i < NonceSize-4; i++ {
-		nonce[4+i] ^= indexBytes[i]
-	}
-
-	return nonce
 }
 
 // readChunks reads plaintext chunks from the reader and sends them to the jobs channel.

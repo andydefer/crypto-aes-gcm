@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"github.com/andydefer/crypto-aes-gcm/internal/argon2"
+	"github.com/andydefer/crypto-aes-gcm/internal/crypto"
 	"github.com/andydefer/crypto-aes-gcm/internal/header"
 )
 
@@ -143,7 +144,7 @@ func (d *Decryptor) processDecryption(reader io.Reader, writer io.Writer, gcm ci
 			return fmt.Errorf("read ciphertext chunk %d: %w", chunkIndex, err)
 		}
 
-		nonce := d.deriveChunkNonce(baseNonce, chunkIndex)
+		nonce := crypto.DeriveChunkNonce(baseNonce, chunkIndex)
 
 		plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 		if err != nil {
@@ -158,20 +159,4 @@ func (d *Decryptor) processDecryption(reader io.Reader, writer io.Writer, gcm ci
 	}
 
 	return nil
-}
-
-// deriveChunkNonce creates a chunk-specific nonce by XORing the base nonce
-// with the chunk index bytes.
-func (d *Decryptor) deriveChunkNonce(baseNonce []byte, chunkIndex uint64) []byte {
-	nonce := make([]byte, NonceSize)
-	copy(nonce, baseNonce)
-
-	indexBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(indexBytes, chunkIndex)
-
-	for i := 0; i < 8 && i < NonceSize-4; i++ {
-		nonce[4+i] ^= indexBytes[i]
-	}
-
-	return nonce
 }

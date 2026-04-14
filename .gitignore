@@ -23,6 +23,7 @@ vendor/
 
 # Private directory
 private/
+prompts/
 
 # Go workspace file
 go.work
