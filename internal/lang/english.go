@@ -80,8 +80,14 @@ func (e EnglishBundle) GetMessage(key Key, args ...interface{}) string {
 		format = e.GetInteractiveWorkerCount()
 	case InteractiveOverwrite:
 		format = e.GetInteractiveOverwrite()
+	case InteractiveOverwriteConfirm:
+		format = e.GetInteractiveOverwriteConfirm()
+	case InteractiveOverwriteCancelled:
+		format = e.GetInteractiveOverwriteCancelled()
 	case InteractiveCancel:
 		format = e.GetInteractiveCancel()
+	case InteractiveCancelOperation:
+		format = e.GetInteractiveCancelOperation()
 	case InteractivePressEnter:
 		format = e.GetInteractivePressEnter()
 	case InteractiveFileToEncrypt:
@@ -90,6 +96,8 @@ func (e EnglishBundle) GetMessage(key Key, args ...interface{}) string {
 		format = e.GetInteractiveEncryptedFile()
 	case InteractivePasswordsNotMatch:
 		format = e.GetInteractivePasswordsNotMatch()
+	case InteractiveCheckExists:
+		format = e.GetInteractiveCheckExists()
 
 	// Password handling messages
 	case PasswordPrompt:
@@ -298,6 +306,8 @@ func (e EnglishBundle) GetMessage(key Key, args ...interface{}) string {
 		format = e.GetCryptolibErrHeaderAuthFailed()
 	case CryptolibErrDecryptionFailed:
 		format = e.GetCryptolibErrDecryptionFailed()
+	case CryptolibErrChunkTooLarge:
+		format = e.GetCryptolibErrChunkTooLarge()
 
 	// Cryptolib stream errors
 	case CryptolibErrReadHeaderStream:
@@ -331,7 +341,9 @@ func (e EnglishBundle) GetMessage(key Key, args ...interface{}) string {
 	return format
 }
 
+// ============================================================================
 // Argon2 errors
+// ============================================================================
 
 func (e EnglishBundle) GetErrMemoryTooLow() string {
 	return "memory too low: %d KiB (minimum 8192 KiB)"
@@ -369,7 +381,9 @@ func (e EnglishBundle) GetErrKeyLenLong() string {
 	return "key length too long: %d bytes (maximum 64)"
 }
 
+// ============================================================================
 // CLI messages
+// ============================================================================
 
 func (e EnglishBundle) GetCliFileExists() string {
 	return "File '%s' already exists. Overwrite?"
@@ -383,7 +397,9 @@ func (e EnglishBundle) GetCliError() string {
 	return "❌ Error: %v"
 }
 
+// ============================================================================
 // Flag descriptions
+// ============================================================================
 
 func (e EnglishBundle) GetFlagPassDesc() string {
 	return "Passphrase used for encryption (optional - will prompt if omitted)"
@@ -401,7 +417,9 @@ func (e EnglishBundle) GetFlagQuietDesc() string {
 	return "Suppress progress bar output"
 }
 
+// ============================================================================
 // Command descriptions
+// ============================================================================
 
 func (e EnglishBundle) GetCmdEncryptShort() string {
 	return "🔒 Encrypt a file"
@@ -453,7 +471,9 @@ Examples:
   aescryptool decrypt large.enc result.bin --workers 8 --quiet`
 }
 
+// ============================================================================
 // Interactive mode messages
+// ============================================================================
 
 func (e EnglishBundle) GetInteractiveTitle() string {
 	return "Interactive Mode"
@@ -491,8 +511,20 @@ func (e EnglishBundle) GetInteractiveOverwrite() string {
 	return "⚠️  File already exists. Overwrite?"
 }
 
+func (e EnglishBundle) GetInteractiveOverwriteConfirm() string {
+	return "⚠️ File already exists. Overwrite?"
+}
+
+func (e EnglishBundle) GetInteractiveOverwriteCancelled() string {
+	return "❌ Operation cancelled"
+}
+
 func (e EnglishBundle) GetInteractiveCancel() string {
 	return "❌ Operation cancelled"
+}
+
+func (e EnglishBundle) GetInteractiveCancelOperation() string {
+	return "user cancelled operation"
 }
 
 func (e EnglishBundle) GetInteractivePressEnter() string {
@@ -511,7 +543,13 @@ func (e EnglishBundle) GetInteractivePasswordsNotMatch() string {
 	return "❌ Passwords do not match"
 }
 
+func (e EnglishBundle) GetInteractiveCheckExists() string {
+	return "check file existence"
+}
+
+// ============================================================================
 // Password handling messages
+// ============================================================================
 
 func (e EnglishBundle) GetPasswordPrompt() string {
 	return "🔑 Password: "
@@ -553,7 +591,9 @@ func (e EnglishBundle) GetPasswordDigit() string {
 	return "at least one digit required"
 }
 
+// ============================================================================
 // Root command messages
+// ============================================================================
 
 func (e EnglishBundle) GetRootShortDesc() string {
 	return "🔐 Secure file encryption using AES-256-GCM"
@@ -599,7 +639,9 @@ func (e EnglishBundle) GetRootExampleForce() string {
 	return "# Force overwrite without confirmation"
 }
 
+// ============================================================================
 // Version command messages
+// ============================================================================
 
 func (e EnglishBundle) GetVersionShortDesc() string {
 	return "Show version information"
@@ -621,19 +663,25 @@ func (e EnglishBundle) GetVersionCPUs() string {
 	return "💻 CPUs: %d"
 }
 
+// ============================================================================
 // Crypto errors
+// ============================================================================
 
 func (e EnglishBundle) GetErrDestSliceTooShort() string {
 	return "dest slice too short: need %d, got %d"
 }
 
+// ============================================================================
 // File operation errors
+// ============================================================================
 
 func (e EnglishBundle) GetErrOpenFile() string {
 	return "open file '%s': %w"
 }
 
+// ============================================================================
 // Service validation errors
+// ============================================================================
 
 func (e EnglishBundle) GetErrFileAlreadyExists() string {
 	return "file already exists"
@@ -647,7 +695,9 @@ func (e EnglishBundle) GetWarnWorkersReduced() string {
 	return "⚠️ Workers reduced to %d\n"
 }
 
+// ============================================================================
 // UI banner messages
+// ============================================================================
 
 func (e EnglishBundle) GetUIInteractiveHeader() string {
 	return `
@@ -686,7 +736,9 @@ func (e EnglishBundle) GetUIGoodbyeMessage() string {
 ╚════════════════════════════════════════════════════════════════════╝`
 }
 
+// ============================================================================
 // UI prompts messages
+// ============================================================================
 
 func (e EnglishBundle) GetUIPromptOperationLabel() string {
 	return "What do you want to do"
@@ -764,7 +816,9 @@ func (e EnglishBundle) GetUIPromptConfirmInvalid() string {
 	return "❌ Please answer y/n"
 }
 
+// ============================================================================
 // UI success messages
+// ============================================================================
 
 func (e EnglishBundle) GetUISuccessOperation() string {
 	return "✅ Operation successful!"
@@ -778,7 +832,9 @@ func (e EnglishBundle) GetUISuccessSize() string {
 	return "📏 Size:   %s"
 }
 
+// ============================================================================
 // Cryptolib decryption errors
+// ============================================================================
 
 func (e EnglishBundle) GetCryptolibErrOpenInput() string {
 	return "open input: %w"
@@ -828,7 +884,9 @@ func (e EnglishBundle) GetCryptolibErrWritePlaintext() string {
 	return "write plaintext chunk %d: %w"
 }
 
+// ============================================================================
 // Cryptolib encryption errors
+// ============================================================================
 
 func (e EnglishBundle) GetCryptolibErrOpenInputEnc() string {
 	return "open input: %w"
@@ -902,7 +960,9 @@ func (e EnglishBundle) GetCryptolibErrCloseOutput() string {
 	return "close output: %w"
 }
 
+// ============================================================================
 // Cryptolib sentinel errors
+// ============================================================================
 
 func (e EnglishBundle) GetCryptolibErrInvalidMagic() string {
 	return "invalid magic bytes: file not encrypted with this tool"
@@ -920,7 +980,13 @@ func (e EnglishBundle) GetCryptolibErrDecryptionFailed() string {
 	return "decryption failed: corrupted data or wrong key"
 }
 
+func (e EnglishBundle) GetCryptolibErrChunkTooLarge() string {
+	return "chunk size exceeds maximum allowed limit"
+}
+
+// ============================================================================
 // Cryptolib stream errors
+// ============================================================================
 
 func (e EnglishBundle) GetCryptolibErrReadHeaderStream() string {
 	return "read header: %w"

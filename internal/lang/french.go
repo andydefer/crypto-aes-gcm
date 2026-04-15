@@ -13,7 +13,7 @@ func (f FrenchBundle) GetMessage(key Key, args ...interface{}) string {
 	var format string
 
 	switch key {
-	// Argon2 key derivation errors
+	// Argon2 errors
 	case ErrMemoryTooLow:
 		format = f.GetErrMemoryTooLow()
 	case ErrMemoryTooHigh:
@@ -33,7 +33,7 @@ func (f FrenchBundle) GetMessage(key Key, args ...interface{}) string {
 	case ErrKeyLenLong:
 		format = f.GetErrKeyLenLong()
 
-	// CLI user interactions
+	// CLI messages
 	case CliFileExists:
 		format = f.GetCliFileExists()
 	case CliOperationCancelled:
@@ -41,7 +41,7 @@ func (f FrenchBundle) GetMessage(key Key, args ...interface{}) string {
 	case CliError:
 		format = f.GetCliError()
 
-	// Command-line flags descriptions
+	// Flag descriptions
 	case FlagPassDesc:
 		format = f.GetFlagPassDesc()
 	case FlagWorkersDesc:
@@ -61,7 +61,7 @@ func (f FrenchBundle) GetMessage(key Key, args ...interface{}) string {
 	case CmdDecryptLong:
 		format = f.GetCmdDecryptLong()
 
-	// Interactive mode prompts and messages
+	// Interactive mode messages
 	case InteractiveTitle:
 		format = f.GetInteractiveTitle()
 	case InteractiveEncryptFlow:
@@ -80,8 +80,14 @@ func (f FrenchBundle) GetMessage(key Key, args ...interface{}) string {
 		format = f.GetInteractiveWorkerCount()
 	case InteractiveOverwrite:
 		format = f.GetInteractiveOverwrite()
+	case InteractiveOverwriteConfirm:
+		format = f.GetInteractiveOverwriteConfirm()
+	case InteractiveOverwriteCancelled:
+		format = f.GetInteractiveOverwriteCancelled()
 	case InteractiveCancel:
 		format = f.GetInteractiveCancel()
+	case InteractiveCancelOperation:
+		format = f.GetInteractiveCancelOperation()
 	case InteractivePressEnter:
 		format = f.GetInteractivePressEnter()
 	case InteractiveFileToEncrypt:
@@ -90,8 +96,10 @@ func (f FrenchBundle) GetMessage(key Key, args ...interface{}) string {
 		format = f.GetInteractiveEncryptedFile()
 	case InteractivePasswordsNotMatch:
 		format = f.GetInteractivePasswordsNotMatch()
+	case InteractiveCheckExists:
+		format = f.GetInteractiveCheckExists()
 
-	// Password validation and prompts
+	// Password handling messages
 	case PasswordPrompt:
 		format = f.GetPasswordPrompt()
 	case PasswordConfirmPrompt:
@@ -113,7 +121,7 @@ func (f FrenchBundle) GetMessage(key Key, args ...interface{}) string {
 	case PasswordDigit:
 		format = f.GetPasswordDigit()
 
-	// Root command help sections
+	// Root command messages
 	case RootShortDesc:
 		format = f.GetRootShortDesc()
 	case RootLongDesc:
@@ -137,7 +145,7 @@ func (f FrenchBundle) GetMessage(key Key, args ...interface{}) string {
 	case RootExampleForce:
 		format = f.GetRootExampleForce()
 
-	// Version command output
+	// Version command messages
 	case VersionShortDesc:
 		format = f.GetVersionShortDesc()
 	case VersionLongDesc:
@@ -149,15 +157,15 @@ func (f FrenchBundle) GetMessage(key Key, args ...interface{}) string {
 	case VersionCPUs:
 		format = f.GetVersionCPUs()
 
-	// Cryptographic nonce errors
+	// Crypto errors
 	case ErrDestSliceTooShort:
 		format = f.GetErrDestSliceTooShort()
 
-	// File system operation errors
+	// File operation errors
 	case ErrOpenFile:
 		format = f.GetErrOpenFile()
 
-	// Service layer validation
+	// Service validation errors
 	case ErrFileAlreadyExists:
 		format = f.GetErrFileAlreadyExists()
 	case ErrFileNotFound:
@@ -165,7 +173,7 @@ func (f FrenchBundle) GetMessage(key Key, args ...interface{}) string {
 	case WarnWorkersReduced:
 		format = f.GetWarnWorkersReduced()
 
-	// UI banners and headers
+	// UI banner messages
 	case UIInteractiveHeader:
 		format = f.GetUIInteractiveHeader()
 	case UIEncryptHeader:
@@ -177,7 +185,7 @@ func (f FrenchBundle) GetMessage(key Key, args ...interface{}) string {
 	case UIGoodbyeMessage:
 		format = f.GetUIGoodbyeMessage()
 
-	// UI prompt messages
+	// UI prompts messages
 	case UIPromptOperationLabel:
 		format = f.GetUIPromptOperationLabel()
 	case UIPromptEncryptOption:
@@ -298,8 +306,10 @@ func (f FrenchBundle) GetMessage(key Key, args ...interface{}) string {
 		format = f.GetCryptolibErrHeaderAuthFailed()
 	case CryptolibErrDecryptionFailed:
 		format = f.GetCryptolibErrDecryptionFailed()
+	case CryptolibErrChunkTooLarge:
+		format = f.GetCryptolibErrChunkTooLarge()
 
-	// Cryptolib stream processing errors
+	// Cryptolib stream errors
 	case CryptolibErrReadHeaderStream:
 		format = f.GetCryptolibErrReadHeaderStream()
 	case CryptolibErrReadHeaderHMACStream:
@@ -331,7 +341,9 @@ func (f FrenchBundle) GetMessage(key Key, args ...interface{}) string {
 	return format
 }
 
-// Argon2 key derivation errors
+// ============================================================================
+// Argon2 errors
+// ============================================================================
 
 func (f FrenchBundle) GetErrMemoryTooLow() string {
 	return "mémoire trop basse: %d KiB (minimum 8192 KiB)"
@@ -369,7 +381,9 @@ func (f FrenchBundle) GetErrKeyLenLong() string {
 	return "clé trop longue: %d bytes (maximum 64)"
 }
 
-// CLI user interactions
+// ============================================================================
+// CLI messages
+// ============================================================================
 
 func (f FrenchBundle) GetCliFileExists() string {
 	return "Le fichier '%s' existe déjà. Écraser ?"
@@ -383,7 +397,9 @@ func (f FrenchBundle) GetCliError() string {
 	return "❌ Erreur: %v"
 }
 
-// Command-line flags descriptions
+// ============================================================================
+// Flag descriptions
+// ============================================================================
 
 func (f FrenchBundle) GetFlagPassDesc() string {
 	return "Phrase de passe utilisée pour le chiffrement (optionnel - sera demandée si omis)"
@@ -401,7 +417,9 @@ func (f FrenchBundle) GetFlagQuietDesc() string {
 	return "Supprimer l'affichage de la barre de progression"
 }
 
+// ============================================================================
 // Command descriptions
+// ============================================================================
 
 func (f FrenchBundle) GetCmdEncryptShort() string {
 	return "🔒 Chiffrer un fichier"
@@ -453,7 +471,9 @@ Exemples:
   aescryptool decrypt large.enc result.bin --workers 8 --quiet`
 }
 
+// ============================================================================
 // Interactive mode messages
+// ============================================================================
 
 func (f FrenchBundle) GetInteractiveTitle() string {
 	return "Mode Interactif"
@@ -491,8 +511,20 @@ func (f FrenchBundle) GetInteractiveOverwrite() string {
 	return "⚠️  Le fichier existe déjà. Écraser ?"
 }
 
+func (f FrenchBundle) GetInteractiveOverwriteConfirm() string {
+	return "⚠️ Le fichier existe déjà. Écraser ?"
+}
+
+func (f FrenchBundle) GetInteractiveOverwriteCancelled() string {
+	return "❌ Opération annulée"
+}
+
 func (f FrenchBundle) GetInteractiveCancel() string {
 	return "❌ Opération annulée"
+}
+
+func (f FrenchBundle) GetInteractiveCancelOperation() string {
+	return "opération annulée par l'utilisateur"
 }
 
 func (f FrenchBundle) GetInteractivePressEnter() string {
@@ -511,7 +543,13 @@ func (f FrenchBundle) GetInteractivePasswordsNotMatch() string {
 	return "❌ Les mots de passe ne correspondent pas"
 }
 
+func (f FrenchBundle) GetInteractiveCheckExists() string {
+	return "vérification de l'existence du fichier"
+}
+
+// ============================================================================
 // Password handling messages
+// ============================================================================
 
 func (f FrenchBundle) GetPasswordPrompt() string {
 	return "🔑 Mot de passe: "
@@ -553,7 +591,9 @@ func (f FrenchBundle) GetPasswordDigit() string {
 	return "au moins un chiffre requis"
 }
 
+// ============================================================================
 // Root command messages
+// ============================================================================
 
 func (f FrenchBundle) GetRootShortDesc() string {
 	return "🔐 Chiffrement sécurisé de fichiers avec AES-256-GCM"
@@ -599,7 +639,9 @@ func (f FrenchBundle) GetRootExampleForce() string {
 	return "# Forcer l'écrasement sans confirmation"
 }
 
+// ============================================================================
 // Version command messages
+// ============================================================================
 
 func (f FrenchBundle) GetVersionShortDesc() string {
 	return "Afficher les informations de version"
@@ -621,19 +663,25 @@ func (f FrenchBundle) GetVersionCPUs() string {
 	return "💻 CPUs: %d"
 }
 
+// ============================================================================
 // Crypto errors
+// ============================================================================
 
 func (f FrenchBundle) GetErrDestSliceTooShort() string {
 	return "tranche de destination trop courte: besoin de %d, reçu %d"
 }
 
+// ============================================================================
 // File operation errors
+// ============================================================================
 
 func (f FrenchBundle) GetErrOpenFile() string {
 	return "ouverture du fichier '%s': %w"
 }
 
+// ============================================================================
 // Service validation errors
+// ============================================================================
 
 func (f FrenchBundle) GetErrFileAlreadyExists() string {
 	return "fichier existe déjà"
@@ -647,7 +695,9 @@ func (f FrenchBundle) GetWarnWorkersReduced() string {
 	return "⚠️ Workers réduit à %d\n"
 }
 
+// ============================================================================
 // UI banner messages
+// ============================================================================
 
 func (f FrenchBundle) GetUIInteractiveHeader() string {
 	return `
@@ -686,7 +736,9 @@ func (f FrenchBundle) GetUIGoodbyeMessage() string {
 ╚════════════════════════════════════════════════════════════════════╝`
 }
 
-// UI prompt messages
+// ============================================================================
+// UI prompts messages
+// ============================================================================
 
 func (f FrenchBundle) GetUIPromptOperationLabel() string {
 	return "Que souhaitez-vous faire"
@@ -764,7 +816,9 @@ func (f FrenchBundle) GetUIPromptConfirmInvalid() string {
 	return "❌ Répondez par y/n"
 }
 
+// ============================================================================
 // UI success messages
+// ============================================================================
 
 func (f FrenchBundle) GetUISuccessOperation() string {
 	return "✅ Opération réussie !"
@@ -778,7 +832,9 @@ func (f FrenchBundle) GetUISuccessSize() string {
 	return "📏 Taille:  %s"
 }
 
+// ============================================================================
 // Cryptolib decryption errors
+// ============================================================================
 
 func (f FrenchBundle) GetCryptolibErrOpenInput() string {
 	return "ouverture du fichier d'entrée: %w"
@@ -828,7 +884,9 @@ func (f FrenchBundle) GetCryptolibErrWritePlaintext() string {
 	return "écriture du chunk clair %d: %w"
 }
 
+// ============================================================================
 // Cryptolib encryption errors
+// ============================================================================
 
 func (f FrenchBundle) GetCryptolibErrOpenInputEnc() string {
 	return "ouverture du fichier d'entrée: %w"
@@ -902,7 +960,9 @@ func (f FrenchBundle) GetCryptolibErrCloseOutput() string {
 	return "fermeture de la sortie: %w"
 }
 
+// ============================================================================
 // Cryptolib sentinel errors
+// ============================================================================
 
 func (f FrenchBundle) GetCryptolibErrInvalidMagic() string {
 	return "octets magiques invalides: fichier non chiffré avec cet outil"
@@ -920,7 +980,13 @@ func (f FrenchBundle) GetCryptolibErrDecryptionFailed() string {
 	return "échec du déchiffrement: données corrompues ou mauvaise clé"
 }
 
-// Cryptolib stream processing errors
+func (f FrenchBundle) GetCryptolibErrChunkTooLarge() string {
+	return "la taille du chunk dépasse la limite maximale autorisée"
+}
+
+// ============================================================================
+// Cryptolib stream errors
+// ============================================================================
 
 func (f FrenchBundle) GetCryptolibErrReadHeaderStream() string {
 	return "lecture de l'en-tête: %w"

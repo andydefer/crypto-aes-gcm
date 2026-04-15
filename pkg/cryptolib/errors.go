@@ -40,4 +40,10 @@ var (
 	//   - Incorrect encryption key
 	//   - File tampering or truncation
 	ErrDecryptionFailed = errors.New(lang.T(lang.CryptolibErrDecryptionFailed))
+
+	// ErrChunkTooLarge indicates a chunk size exceeds the maximum allowed limit.
+	//
+	// This error occurs when a malicious or corrupted file declares a chunk
+	// size larger than MaxChunkSize to prevent memory exhaustion attacks.
+	ErrChunkTooLarge = errors.New(lang.T(lang.CryptolibErrChunkTooLarge))
 )

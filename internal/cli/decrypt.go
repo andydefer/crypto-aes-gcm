@@ -17,6 +17,20 @@ import (
 )
 
 // NewDecryptCmd creates and configures the decrypt command.
+//
+// The command expects two positional arguments:
+//   - input: path to the encrypted file
+//   - output: path where decrypted content will be written
+//
+// Flags:
+//   - --pass, -p: passphrase for decryption (optional, prompts if omitted)
+//   - --workers, -w: number of parallel workers (defaults to cryptolib.DefaultWorkers)
+//   - --force, -f: overwrite output file without confirmation
+//   - --quiet, -q: suppress progress output
+//   - --lang: language for UI messages (en or fr)
+//
+// Returns:
+//   - *cobra.Command: configured decrypt command ready for registration
 func NewDecryptCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "decrypt [input] [output]",
@@ -35,8 +49,27 @@ func NewDecryptCmd() *cobra.Command {
 }
 
 // runDecrypt executes the decryption operation.
+//
+// Parameters:
+//   - cmd: cobra command providing error output streams
+//   - args: positional arguments (input file path, output file path)
+//
+// Returns:
+//   - error: nil on success, or an error describing the failure
+//
+// The function performs the following steps:
+//  1. Applies language settings for UI messages
+//  2. Validates input file existence
+//  3. Checks output file overwrite conditions
+//  4. Resolves the passphrase (flag or interactive prompt)
+//  5. Delegates decryption to the service layer
+//
+// Error conditions:
+//   - Input file does not exist
+//   - Output file exists and user declines overwrite
+//   - Password resolution fails
+//   - Decryption operation fails (wrong password, corrupted file, etc.)
 func runDecrypt(cmd *cobra.Command, args []string) error {
-	// Appliquer la langue si spécifiée
 	applyLanguage(GlobalConfig.Lang)
 
 	input := args[0]

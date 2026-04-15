@@ -4,7 +4,11 @@
 // with Argon2id key derivation and parallel streaming capabilities.
 package cryptolib
 
-import "runtime"
+import (
+	"runtime"
+
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
+)
 
 const (
 	// Magic identifies files created by this library.
@@ -37,17 +41,18 @@ const (
 	// via Argon2id key derivation function.
 	KeySize = 32
 
+	// MaxChunkSize is the maximum allowed size for a single encrypted chunk.
+	//
+	// This limit prevents memory exhaustion attacks where a malicious file
+	// declares an extremely large chunk size. The value is set to 10 times
+	// the default chunk size (10MB), balancing security with legitimate use cases.
+	MaxChunkSize = 10 * constants.MB
+
 	// DefaultChunkSize is the size of each encrypted chunk (1MB).
 	//
 	// Chunks of this size are processed independently, allowing parallel
 	// encryption and streaming decryption with bounded memory usage.
-	DefaultChunkSize = 1024 * 1024
-
-	// DefaultWorkers is the default number of parallel encryption workers.
-	//
-	// This value provides a good balance between performance and resource usage
-	// on most systems. Workers are automatically clamped to 2×CPU cores.
-	// DefaultWorkers = 4
+	DefaultChunkSize = 1 * constants.MB
 
 	// DefaultMaxPendingChunks is the default limit of out-of-order chunks buffered in memory
 	// during encryption to prevent memory exhaustion attacks.

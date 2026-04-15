@@ -20,6 +20,7 @@ import (
 	"errors"
 	"runtime"
 
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
 	"github.com/andydefer/crypto-aes-gcm/internal/lang"
 	"golang.org/x/crypto/argon2"
 )
@@ -59,10 +60,10 @@ const maxThreads = 32
 //   - Time: between 1 and 100
 //   - KeyLen: between 16 and 64 bytes
 func (p Params) Validate() error {
-	if p.Memory < 8*1024 {
+	if p.Memory < 8*constants.KB {
 		return errors.New(lang.T(lang.ErrMemoryTooLow, p.Memory))
 	}
-	if p.Memory > 1024*1024 {
+	if p.Memory > constants.MB {
 		return errors.New(lang.T(lang.ErrMemoryTooHigh, p.Memory))
 	}
 

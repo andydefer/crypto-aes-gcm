@@ -5,6 +5,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -21,7 +22,7 @@ import (
 func NewInteractCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "interact",
-		Short: "🎮 Interactive mode",
+		Short: lang.T(lang.CmdEncryptShort),
 		Long:  lang.T(lang.CmdEncryptLong),
 		RunE:  runInteractive,
 	}
@@ -223,13 +224,13 @@ func promptAndConfirmPassword() string {
 func checkAndConfirmOverwrite(output string) error {
 	exists, err := service.CheckFileExists(output)
 	if err != nil {
-		return fmt.Errorf("check file existence: %w", err)
+		return fmt.Errorf("%s: %w", lang.T(lang.InteractiveCheckExists), err)
 	}
 
 	if exists {
 		if !ui.PromptConfirm(lang.T(lang.InteractiveOverwrite), true) {
-			ui.InfoColor.Println(lang.T(lang.InteractiveCancel))
-			return fmt.Errorf("user cancelled overwrite")
+			ui.InfoColor.Println(lang.T(lang.InteractiveOverwriteCancelled))
+			return errors.New(lang.T(lang.InteractiveCancelOperation))
 		}
 		fmt.Println()
 	}

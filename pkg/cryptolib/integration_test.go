@@ -27,6 +27,8 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
 )
 
 // TestConcurrentEncryption verifies that multiple encryption/decryption operations
@@ -49,7 +51,7 @@ func TestConcurrentEncryption(t *testing.T) {
 		go func(fileID int) {
 			defer waitGroup.Done()
 
-			testData := make([]byte, 1024*1024)
+			testData := make([]byte, constants.MB)
 			_, _ = rand.Read(testData)
 
 			inputFile := createTempFile(t, testData)
@@ -132,7 +134,7 @@ func TestLargeFileStreaming(t *testing.T) {
 		t.Skip("skipping large file test in short mode")
 	}
 
-	testData := make([]byte, 50*1024*1024)
+	testData := make([]byte, 50*constants.MB)
 	_, _ = rand.Read(testData)
 
 	inputFile := createTempFile(t, testData)
@@ -190,7 +192,7 @@ func TestLargeFileStreaming(t *testing.T) {
 //   - No off-by-one errors in chunk processing
 //   - The encryptor handles the full range of valid worker values
 func TestEncryptDecryptWithAllWorkerCounts(t *testing.T) {
-	testData := make([]byte, 5*1024*1024)
+	testData := make([]byte, 5*constants.MB)
 	_, _ = rand.Read(testData)
 
 	workerCounts := []int{1, 2, 4, 8, 16, runtime.NumCPU() * 2}
@@ -488,7 +490,7 @@ func TestLargeFile(t *testing.T) {
 	decryptedFile := filepath.Join(tempDir, "large.dec")
 	password := "large-file-password"
 
-	size := 10 * 1024 * 1024
+	size := 10 * constants.MB
 	testContent := make([]byte, size)
 	for i := range testContent {
 		testContent[i] = byte(i % 256)

@@ -358,9 +358,10 @@ const (
     SaltSize               = 16
     NonceSize              = 12
     KeySize                = 32
-    DefaultChunkSize       = 1024 * 1024  // 1MB
-    DefaultMaxPendingChunks = 100         // Anti-DoS
-    MaxMaxPendingChunks     = 1000        // Absolute maximum
+    DefaultChunkSize       = 1 * 1024 * 1024  // 1MB
+    MaxChunkSize           = 16 * 1024 * 1024 // 16MB - Anti-DoS
+    DefaultMaxPendingChunks = 100             // Anti-DoS
+    MaxMaxPendingChunks     = 1000            // Absolute maximum
 )
 ```
 

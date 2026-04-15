@@ -12,6 +12,8 @@ package utils
 
 import (
 	"testing"
+
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
 )
 
 // TestFormatFileSize verifies that byte counts are correctly formatted into
@@ -34,8 +36,8 @@ func TestFormatFileSize(t *testing.T) {
 	}{
 		{"bytes", 500, "500 B"},
 		{"kilobytes", 1500, "1.46 KB"},
-		{"megabytes", 5 * 1024 * 1024, "5.00 MB"},
-		{"gigabytes", 3 * 1024 * 1024 * 1024, "3.00 GB"},
+		{"megabytes", 5 * constants.MB, "5.00 MB"},
+		{"gigabytes", 3 * constants.GB, "3.00 GB"},
 		{"zero bytes", 0, "0 B"},
 		{"1 byte", 1, "1 B"},
 		{"1023 bytes", 1023, "1023 B"},

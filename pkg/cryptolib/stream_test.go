@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
 )
 
 // TestDecryptStream verifies the streaming decryption convenience function.
@@ -135,7 +137,7 @@ func TestDecryptStream_LargeData(t *testing.T) {
 		t.Skip("skipping large data test in short mode")
 	}
 
-	testData := make([]byte, 10*1024*1024)
+	testData := make([]byte, 10*constants.MB)
 	_, _ = rand.Read(testData)
 
 	reader := bytes.NewReader(testData)

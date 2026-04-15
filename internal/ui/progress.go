@@ -49,7 +49,7 @@ type ProgressBar interface {
 //
 // Example:
 //
-//	bar := CreateProgressBar(1024*1024, "🔒 Encrypting")
+//	bar := CreateProgressBar(constants.MB, "🔒 Encrypting")
 //	defer bar.Finish()
 //	bar.Set64(512*1024) // 50% complete
 func CreateProgressBar(total int64, description string) ProgressBar {

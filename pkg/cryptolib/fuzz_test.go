@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
 	"github.com/andydefer/crypto-aes-gcm/internal/header"
 )
 
@@ -114,7 +115,7 @@ func FuzzDecryptCorrupted(f *testing.F) {
 // The test ensures that the header format is stable and that any valid input
 // to Serialize produces output that ParseHeader can correctly decode.
 func FuzzHeaderSerialization(f *testing.F) {
-	f.Add([]byte("CRYP"), byte(2), uint32(1024*1024))
+	f.Add([]byte("CRYP"), byte(2), uint32(constants.MB))
 
 	f.Fuzz(func(t *testing.T, magicBytes []byte, version byte, chunkSize uint32) {
 		var magic [4]byte

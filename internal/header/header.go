@@ -9,21 +9,8 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/binary"
-)
 
-const (
-	// HeaderSize returns the size in bytes of a serialized file header.
-	HeaderSize = 4 + 1 + 16 + 4 // magic(4) + version(1) + salt(16) + chunkSize(4)
-
-	// MinSupportedVersion is the earliest protocol version supported.
-	MinSupportedVersion = 1
-	// MaxSupportedVersion is the latest protocol version supported.
-	MaxSupportedVersion = 2
-
-	// MinChunkSize is the smallest allowed encrypted chunk size (1KB).
-	MinChunkSize = 1024
-	// MaxChunkSize is the largest allowed encrypted chunk size (1GB).
-	MaxChunkSize = 1024 * 1024 * 1024
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
 )
 
 // Serialize converts file header components into a fixed-size byte slice.
@@ -45,7 +32,7 @@ const (
 // Returns:
 //   - A 25-byte slice containing the serialized header
 func Serialize(magic [4]byte, version byte, salt [16]byte, chunkSize uint32) []byte {
-	buf := make([]byte, HeaderSize)
+	buf := make([]byte, constants.HeaderSize)
 
 	magicValue := uint32(magic[0])<<24 |
 		uint32(magic[1])<<16 |
@@ -155,7 +142,7 @@ func DeserializeSalt(data []byte) [16]byte {
 // Returns:
 //   - chunk size in bytes, or 0 if data is too short
 func DeserializeChunkSize(data []byte) uint32 {
-	if len(data) < HeaderSize {
+	if len(data) < constants.HeaderSize {
 		return 0
 	}
 	return binary.BigEndian.Uint32(data[21:25])
@@ -175,7 +162,7 @@ func DeserializeChunkSize(data []byte) uint32 {
 //   - chunkSize: chunk size in bytes
 //   - ok: true if parsing succeeded, false if data length is invalid
 func ParseHeader(data []byte) (magic [4]byte, version byte, salt [16]byte, chunkSize uint32, ok bool) {
-	if len(data) < HeaderSize {
+	if len(data) < constants.HeaderSize {
 		return magic, version, salt, chunkSize, false
 	}
 
@@ -194,7 +181,7 @@ func ValidateMagic(magic [4]byte) bool {
 
 // ValidateVersion checks if the protocol version is supported.
 func ValidateVersion(version byte) bool {
-	return version >= MinSupportedVersion && version <= MaxSupportedVersion
+	return version >= constants.MinSupportedVersion && version <= constants.MaxSupportedVersion
 }
 
 // ValidateSalt checks if salt is not all zeros.
@@ -205,7 +192,7 @@ func ValidateSalt(salt [16]byte) bool {
 
 // ValidateChunkSize checks if chunk size is within reasonable bounds.
 func ValidateChunkSize(chunkSize uint32) bool {
-	return chunkSize >= MinChunkSize && chunkSize <= MaxChunkSize
+	return chunkSize >= constants.MinChunkSize && chunkSize <= constants.MaxChunkSize
 }
 
 // ValidateHeader performs comprehensive validation of all header components.

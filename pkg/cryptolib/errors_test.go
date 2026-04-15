@@ -25,6 +25,7 @@ func TestErrorTypes(t *testing.T) {
 		{"ErrUnsupportedVersion", ErrUnsupportedVersion},
 		{"ErrHeaderAuthFailed", ErrHeaderAuthFailed},
 		{"ErrDecryptionFailed", ErrDecryptionFailed},
+		{"ErrChunkTooLarge", ErrChunkTooLarge},
 	}
 
 	for _, current := range errorConstants {
@@ -73,6 +74,7 @@ func TestErrorMessageContent(t *testing.T) {
 		{"ErrUnsupportedVersion", ErrUnsupportedVersion},
 		{"ErrHeaderAuthFailed", ErrHeaderAuthFailed},
 		{"ErrDecryptionFailed", ErrDecryptionFailed},
+		{"ErrChunkTooLarge", ErrChunkTooLarge},
 	}
 
 	for _, current := range errorConstants {

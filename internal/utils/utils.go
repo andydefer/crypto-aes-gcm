@@ -10,7 +10,11 @@
 // making them safe for concurrent use.
 package utils
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
+)
 
 // FormatFileSize converts a byte count into a human-readable string with
 // appropriate units (B, KB, MB, GB).
@@ -40,12 +44,12 @@ import "fmt"
 //	FormatFileSize(0)             // returns "0 B"
 func FormatFileSize(bytes int64) string {
 	switch {
-	case bytes > 1024*1024*1024:
-		return fmt.Sprintf("%.2f GB", float64(bytes)/(1024*1024*1024))
-	case bytes > 1024*1024:
-		return fmt.Sprintf("%.2f MB", float64(bytes)/(1024*1024))
-	case bytes > 1024:
-		return fmt.Sprintf("%.2f KB", float64(bytes)/1024)
+	case bytes > constants.GB:
+		return fmt.Sprintf("%.2f GB", float64(bytes)/(constants.GB))
+	case bytes > constants.MB:
+		return fmt.Sprintf("%.2f MB", float64(bytes)/(constants.MB))
+	case bytes > constants.KB:
+		return fmt.Sprintf("%.2f KB", float64(bytes)/constants.KB)
 	default:
 		return fmt.Sprintf("%d B", bytes)
 	}

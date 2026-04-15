@@ -41,20 +41,24 @@ const (
 	CmdDecryptLong  Key = "cli.cmd.decrypt_long"
 
 	// Interactive mode prompts and messages
-	InteractiveTitle             Key = "cli.interactive.title"
-	InteractiveEncryptFlow       Key = "cli.interactive.encrypt_flow"
-	InteractiveDecryptFlow       Key = "cli.interactive.decrypt_flow"
-	InteractiveInputFile         Key = "cli.interactive.input_file"
-	InteractiveOutputFile        Key = "cli.interactive.output_file"
-	InteractivePassword          Key = "cli.interactive.password"
-	InteractiveConfirm           Key = "cli.interactive.confirm"
-	InteractiveWorkerCount       Key = "cli.interactive.worker_count"
-	InteractiveOverwrite         Key = "cli.interactive.overwrite"
-	InteractiveCancel            Key = "cli.interactive.cancel"
-	InteractivePressEnter        Key = "cli.interactive.press_enter"
-	InteractiveFileToEncrypt     Key = "cli.interactive.file_to_encrypt"
-	InteractiveEncryptedFile     Key = "cli.interactive.encrypted_file"
-	InteractivePasswordsNotMatch Key = "cli.interactive.passwords_not_match"
+	InteractiveTitle              Key = "cli.interactive.title"
+	InteractiveEncryptFlow        Key = "cli.interactive.encrypt_flow"
+	InteractiveDecryptFlow        Key = "cli.interactive.decrypt_flow"
+	InteractiveInputFile          Key = "cli.interactive.input_file"
+	InteractiveOutputFile         Key = "cli.interactive.output_file"
+	InteractivePassword           Key = "cli.interactive.password"
+	InteractiveConfirm            Key = "cli.interactive.confirm"
+	InteractiveWorkerCount        Key = "cli.interactive.worker_count"
+	InteractiveOverwrite          Key = "cli.interactive.overwrite"
+	InteractiveCancel             Key = "cli.interactive.cancel"
+	InteractivePressEnter         Key = "cli.interactive.press_enter"
+	InteractiveFileToEncrypt      Key = "cli.interactive.file_to_encrypt"
+	InteractiveEncryptedFile      Key = "cli.interactive.encrypted_file"
+	InteractivePasswordsNotMatch  Key = "cli.interactive.passwords_not_match"
+	InteractiveCancelOperation    Key = "cli.interactive.cancel_operation"
+	InteractiveCheckExists        Key = "cli.interactive.check_exists"
+	InteractiveOverwriteConfirm   Key = "cli.interactive.overwrite_confirm"
+	InteractiveOverwriteCancelled Key = "cli.interactive.overwrite_cancelled"
 
 	// Password validation and prompts
 	PasswordPrompt        Key = "cli.password.prompt"
@@ -171,6 +175,7 @@ const (
 	CryptolibErrUnsupportedVersion Key = "cryptolib.err.unsupported_version"
 	CryptolibErrHeaderAuthFailed   Key = "cryptolib.err.header_auth_failed"
 	CryptolibErrDecryptionFailed   Key = "cryptolib.err.decryption_failed"
+	CryptolibErrChunkTooLarge      Key = "cryptolib.err.chunk_too_large"
 
 	// Cryptolib stream processing errors
 	CryptolibErrReadHeaderStream     Key = "cryptolib.err.read_header_stream"
@@ -237,6 +242,10 @@ type MessageBundle interface {
 	GetInteractiveFileToEncrypt() string
 	GetInteractiveEncryptedFile() string
 	GetInteractivePasswordsNotMatch() string
+	GetInteractiveCancelOperation() string
+	GetInteractiveCheckExists() string
+	GetInteractiveOverwriteConfirm() string
+	GetInteractiveOverwriteCancelled() string
 
 	// Password handling messages
 	GetPasswordPrompt() string
@@ -353,6 +362,7 @@ type MessageBundle interface {
 	GetCryptolibErrUnsupportedVersion() string
 	GetCryptolibErrHeaderAuthFailed() string
 	GetCryptolibErrDecryptionFailed() string
+	GetCryptolibErrChunkTooLarge() string
 
 	// Cryptolib stream errors
 	GetCryptolibErrReadHeaderStream() string

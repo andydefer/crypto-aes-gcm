@@ -8,6 +8,8 @@ package header
 import (
 	"bytes"
 	"testing"
+
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
 )
 
 // TestSerialize verifies that header serialization produces the correct byte length.
@@ -15,12 +17,12 @@ func TestSerialize(t *testing.T) {
 	magic := [4]byte{'C', 'R', 'Y', 'P'}
 	version := byte(2)
 	salt := [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
-	chunkSize := uint32(1024 * 1024)
+	chunkSize := uint32(constants.MB)
 
 	serialized := Serialize(magic, version, salt, chunkSize)
 
-	if len(serialized) != HeaderSize {
-		t.Errorf("expected length %d, got %d", HeaderSize, len(serialized))
+	if len(serialized) != constants.HeaderSize {
+		t.Errorf("expected length %d, got %d", constants.HeaderSize, len(serialized))
 	}
 }
 
@@ -30,7 +32,7 @@ func TestSerializeDeterminism(t *testing.T) {
 	magic := [4]byte{'C', 'R', 'Y', 'P'}
 	version := byte(2)
 	salt := [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
-	chunkSize := uint32(1024 * 1024)
+	chunkSize := uint32(constants.MB)
 
 	serialized1 := Serialize(magic, version, salt, chunkSize)
 	serialized2 := Serialize(magic, version, salt, chunkSize)
@@ -77,7 +79,7 @@ func TestVerifyHMAC(t *testing.T) {
 // TestDeserializeMagic verifies magic byte extraction from serialized headers.
 func TestDeserializeMagic(t *testing.T) {
 	expected := [4]byte{'C', 'R', 'Y', 'P'}
-	serialized := Serialize(expected, 2, [16]byte{}, 1024)
+	serialized := Serialize(expected, 2, [16]byte{}, uint32(constants.MB))
 
 	magic := DeserializeMagic(serialized)
 	if magic != expected {
@@ -94,7 +96,7 @@ func TestDeserializeMagic(t *testing.T) {
 // TestDeserializeVersion verifies version byte extraction from serialized headers.
 func TestDeserializeVersion(t *testing.T) {
 	expected := byte(2)
-	serialized := Serialize([4]byte{}, expected, [16]byte{}, 1024)
+	serialized := Serialize([4]byte{}, expected, [16]byte{}, uint32(constants.MB))
 
 	version := DeserializeVersion(serialized)
 	if version != expected {
@@ -111,7 +113,7 @@ func TestDeserializeVersion(t *testing.T) {
 // TestDeserializeSalt verifies salt extraction from serialized headers.
 func TestDeserializeSalt(t *testing.T) {
 	expected := [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
-	serialized := Serialize([4]byte{}, 2, expected, 1024)
+	serialized := Serialize([4]byte{}, 2, expected, uint32(constants.MB))
 
 	salt := DeserializeSalt(serialized)
 	if salt != expected {
@@ -121,7 +123,7 @@ func TestDeserializeSalt(t *testing.T) {
 
 // TestDeserializeChunkSize verifies chunk size extraction from serialized headers.
 func TestDeserializeChunkSize(t *testing.T) {
-	expected := uint32(1024 * 1024)
+	expected := uint32(constants.MB)
 	serialized := Serialize([4]byte{}, 2, [16]byte{}, expected)
 
 	chunkSize := DeserializeChunkSize(serialized)
@@ -135,7 +137,7 @@ func TestParseHeader(t *testing.T) {
 	expectedMagic := [4]byte{'C', 'R', 'Y', 'P'}
 	expectedVersion := byte(2)
 	expectedSalt := [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
-	expectedChunkSize := uint32(1024 * 1024)
+	expectedChunkSize := uint32(constants.MB)
 
 	serialized := Serialize(expectedMagic, expectedVersion, expectedSalt, expectedChunkSize)
 	magic, version, salt, chunkSize, ok := ParseHeader(serialized)
@@ -163,7 +165,7 @@ func TestValidateHeader(t *testing.T) {
 	validMagic := [4]byte{'C', 'R', 'Y', 'P'}
 	validVersion := byte(2)
 	validSalt := [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
-	validChunkSize := uint32(1024 * 1024)
+	validChunkSize := uint32(constants.MB)
 
 	if !ValidateHeader(validMagic, validVersion, validSalt, validChunkSize) {
 		t.Error("valid header should pass")

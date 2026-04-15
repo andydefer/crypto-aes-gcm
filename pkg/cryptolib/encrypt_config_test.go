@@ -8,13 +8,8 @@ import (
 	"bytes"
 	"runtime"
 	"testing"
-)
 
-// Size constants for human-readable byte values.
-const (
-	KB = 1024
-	MB = 1024 * KB
-	GB = 1024 * MB
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
 )
 
 // TestDefaultEncryptorConfig verifies that default configuration values are correct.
@@ -30,6 +25,34 @@ func TestDefaultEncryptorConfig(t *testing.T) {
 	if config.MaxPendingChunks != DefaultMaxPendingChunks {
 		t.Errorf("Expected MaxPendingChunks=%d, got %d", DefaultMaxPendingChunks, config.MaxPendingChunks)
 	}
+}
+
+// TestMaxChunkSizeConstant verifies that MaxChunkSize is properly defined
+// and has a reasonable value for security.
+func TestMaxChunkSizeConstant(t *testing.T) {
+	// Verify MaxChunkSize is positive
+	if MaxChunkSize <= 0 {
+		t.Errorf("MaxChunkSize should be positive, got %d", MaxChunkSize)
+	}
+
+	// Verify MaxChunkSize is at least DefaultChunkSize
+	if MaxChunkSize < DefaultChunkSize {
+		t.Errorf("MaxChunkSize (%d) should be at least DefaultChunkSize (%d)", MaxChunkSize, DefaultChunkSize)
+	}
+
+	// Verify MaxChunkSize is not unreasonably large (should be <= 100MB for safety)
+	reasonableMax := 100 * constants.MB
+	if MaxChunkSize > reasonableMax {
+		t.Errorf("MaxChunkSize (%d) exceeds reasonable maximum of %d bytes", MaxChunkSize, reasonableMax)
+	}
+
+	// Verify MaxChunkSize is a multiple of KB (reasonable alignment)
+	if MaxChunkSize%constants.KB != 0 {
+		t.Logf("Warning: MaxChunkSize (%d) is not a multiple of %d bytes", MaxChunkSize, constants.KB)
+	}
+
+	// Log the current value for documentation
+	t.Logf("MaxChunkSize = %d bytes (%.2f MB)", MaxChunkSize, float64(MaxChunkSize)/float64(constants.MB))
 }
 
 // TestNewEncryptorWithConfig_Clamping verifies that configuration values are properly clamped.
@@ -91,7 +114,7 @@ func TestNewEncryptorWithConfig_Clamping(t *testing.T) {
 			name: "negative chunk size uses default",
 			config: EncryptorConfig{
 				Workers:          DefaultWorkers(),
-				ChunkSize:        -KB,
+				ChunkSize:        -constants.KB,
 				MaxPendingChunks: DefaultMaxPendingChunks,
 			},
 			expectedWorker:  DefaultWorkers(),
@@ -102,22 +125,33 @@ func TestNewEncryptorWithConfig_Clamping(t *testing.T) {
 			name: "too small chunk size clamped to min",
 			config: EncryptorConfig{
 				Workers:          DefaultWorkers(),
-				ChunkSize:        512, // MinChunkSize is KB (1024)
+				ChunkSize:        512,
 				MaxPendingChunks: DefaultMaxPendingChunks,
 			},
 			expectedWorker:  DefaultWorkers(),
-			expectedChunk:   KB,
+			expectedChunk:   constants.KB,
 			expectedPending: DefaultMaxPendingChunks,
 		},
 		{
 			name: "too large chunk size clamped to max",
 			config: EncryptorConfig{
 				Workers:          DefaultWorkers(),
-				ChunkSize:        2 * GB, // 2GB > MaxChunkSize (1GB)
+				ChunkSize:        2 * constants.GB,
 				MaxPendingChunks: DefaultMaxPendingChunks,
 			},
 			expectedWorker:  DefaultWorkers(),
-			expectedChunk:   GB,
+			expectedChunk:   10 * constants.MB, // Valeur réelle de cryptolib.MaxChunkSize
+			expectedPending: DefaultMaxPendingChunks,
+		},
+		{
+			name: "chunk size exactly at MaxChunkSize",
+			config: EncryptorConfig{
+				Workers:          DefaultWorkers(),
+				ChunkSize:        MaxChunkSize,
+				MaxPendingChunks: DefaultMaxPendingChunks,
+			},
+			expectedWorker:  DefaultWorkers(),
+			expectedChunk:   MaxChunkSize,
 			expectedPending: DefaultMaxPendingChunks,
 		},
 		{
@@ -157,11 +191,11 @@ func TestNewEncryptorWithConfig_Clamping(t *testing.T) {
 			name: "custom valid values",
 			config: EncryptorConfig{
 				Workers:          8,
-				ChunkSize:        2 * MB, // 2MB
+				ChunkSize:        2 * constants.MB,
 				MaxPendingChunks: 50,
 			},
 			expectedWorker:  8,
-			expectedChunk:   2 * MB,
+			expectedChunk:   2 * constants.MB,
 			expectedPending: 50,
 		},
 	}
@@ -193,7 +227,7 @@ func TestNewEncryptorWithConfig_EncryptionDecryption(t *testing.T) {
 
 	config := EncryptorConfig{
 		Workers:          4,
-		ChunkSize:        64 * KB, // 64KB chunks
+		ChunkSize:        64 * constants.KB,
 		MaxPendingChunks: 25,
 	}
 
@@ -226,8 +260,8 @@ func TestNewEncryptorWithConfig_EncryptionDecryption(t *testing.T) {
 // limit is respected. Uses single worker to guarantee in-order processing
 // so the limit is never exceeded.
 func TestNewEncryptorWithConfig_PendingChunksLimit(t *testing.T) {
-	dataSize := 2 * MB   // 2MB
-	chunkSize := 64 * KB // 64KB chunks -> about 32 chunks total
+	dataSize := 2 * constants.MB
+	chunkSize := 64 * constants.KB
 	smallPendingLimit := 5
 
 	data := make([]byte, dataSize)
@@ -236,7 +270,7 @@ func TestNewEncryptorWithConfig_PendingChunksLimit(t *testing.T) {
 	}
 
 	config := EncryptorConfig{
-		Workers:          1, // Single worker = sequential = no out-of-order
+		Workers:          1,
 		ChunkSize:        chunkSize,
 		MaxPendingChunks: smallPendingLimit,
 	}
@@ -268,8 +302,8 @@ func TestNewEncryptorWithConfig_PendingChunksLimit(t *testing.T) {
 // TestNewEncryptorWithConfig_PendingChunksLimitExceeded verifies that the
 // encryptor fails when the pending chunks limit is set too low for parallel workers.
 func TestNewEncryptorWithConfig_PendingChunksLimitExceeded(t *testing.T) {
-	dataSize := 5 * MB   // 5MB
-	chunkSize := 64 * KB // 64KB chunks -> about 80 chunks total
+	dataSize := 5 * constants.MB
+	chunkSize := 64 * constants.KB
 	unreasonableLimit := 3
 
 	data := make([]byte, dataSize)
@@ -278,7 +312,7 @@ func TestNewEncryptorWithConfig_PendingChunksLimitExceeded(t *testing.T) {
 	}
 
 	config := EncryptorConfig{
-		Workers:          4, // Multiple workers = potential out-of-order
+		Workers:          4,
 		ChunkSize:        chunkSize,
 		MaxPendingChunks: unreasonableLimit,
 	}
@@ -293,7 +327,6 @@ func TestNewEncryptorWithConfig_PendingChunksLimitExceeded(t *testing.T) {
 
 	err = encryptor.Encrypt(reader, &encryptedBuf, "test-password")
 
-	// Verify that encryption fails (returns an error)
 	if err == nil {
 		t.Error("expected encryption to fail with unreasonably low pending limit, but it succeeded")
 	}
@@ -306,8 +339,8 @@ func TestNewEncryptorWithConfig_ZeroPendingLimit(t *testing.T) {
 
 	config := EncryptorConfig{
 		Workers:          1,
-		ChunkSize:        64 * KB,
-		MaxPendingChunks: 0, // Should be clamped to DefaultMaxPendingChunks
+		ChunkSize:        64 * constants.KB,
+		MaxPendingChunks: 0,
 	}
 
 	encryptor, err := NewEncryptorWithConfig(config)
@@ -329,25 +362,19 @@ func TestNewEncryptorWithConfig_ZeroPendingLimit(t *testing.T) {
 }
 
 // TestMemoryLeak verifies that encryption doesn't leak memory.
-//
-// This test runs multiple encryption operations and checks that memory
-// growth stays within acceptable limits. A growth of more than 10% is
-// considered a failure, as it may indicate a memory leak.
 func TestMemoryLeak(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping memory leak test in short mode")
 	}
 
-	data := make([]byte, 10*MB)
+	data := make([]byte, 10*constants.MB)
 	password := "test-password"
 
 	var memStats1, memStats2 runtime.MemStats
 
-	// Force GC to get a clean baseline
 	runtime.GC()
 	runtime.ReadMemStats(&memStats1)
 
-	// Perform multiple encryption operations
 	const iterations = 10
 	for i := 0; i < iterations; i++ {
 		encryptor, err := NewEncryptor(DefaultWorkers())
@@ -362,16 +389,12 @@ func TestMemoryLeak(t *testing.T) {
 		}
 	}
 
-	// Force GC to collect any remaining garbage
 	runtime.GC()
 	runtime.ReadMemStats(&memStats2)
 
-	// Calculate memory growth
 	allocDiff := int64(memStats2.Alloc) - int64(memStats1.Alloc)
 	growthPercent := float64(allocDiff) / float64(memStats1.Alloc) * 100
 
-	// Allow up to 10% memory growth (accounts for normal Go runtime overhead)
-	// A leak would show consistent growth across multiple runs
 	maxAllowedGrowthPercent := 10.0
 
 	if growthPercent > maxAllowedGrowthPercent {
@@ -379,13 +402,12 @@ func TestMemoryLeak(t *testing.T) {
 			growthPercent, maxAllowedGrowthPercent, allocDiff)
 	}
 
-	// Log for informational purposes
 	t.Logf("Memory growth: %d bytes (%.1f%%)", allocDiff, growthPercent)
 }
 
 // BenchmarkEncryptWithConfig measures performance with different pending chunk limits.
 func BenchmarkEncryptWithConfig(b *testing.B) {
-	dataSize := 10 * MB // 10MB
+	dataSize := 10 * constants.MB
 	data := make([]byte, dataSize)
 
 	configs := []struct {

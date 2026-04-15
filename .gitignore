@@ -88,6 +88,7 @@ coverage.html
 
 # Test files
 tests/test_data
+testdata
 tests/results
 test.txt
 test.enc

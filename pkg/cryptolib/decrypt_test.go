@@ -8,9 +8,12 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
 )
 
 // TestDecryptor_CorruptedFile verifies that decryption properly handles
@@ -190,7 +193,7 @@ func TestDecryptor_StreamingMemory(t *testing.T) {
 		t.Skip("skipping streaming memory test in short mode")
 	}
 
-	testData := generateTestData(t, 50*1024*1024)
+	testData := generateTestData(t, 50*constants.MB)
 
 	inputFile := createTempFile(t, testData)
 	defer os.Remove(inputFile)
@@ -231,6 +234,86 @@ func TestDecryptor_StreamingMemory(t *testing.T) {
 	if !bytes.Equal(testData, decryptedData) {
 		t.Errorf("decrypted data mismatch. Original: %d bytes, Decrypted: %d bytes",
 			len(testData), len(decryptedData))
+	}
+}
+
+// TestDecryptor_ChunkTooLarge verifies that decryption rejects files with
+// chunks larger than MaxChunkSize to prevent memory exhaustion attacks.
+//
+// This test creates a malicious encrypted file with a chunk size larger than
+// MaxChunkSize and ensures the decryption process returns ErrChunkTooLarge.
+func TestDecryptor_ChunkTooLarge(t *testing.T) {
+	originalData := []byte("test data for chunk too large test")
+	inputFile := createTempFile(t, originalData)
+	defer os.Remove(inputFile)
+
+	encryptedFile := filepath.Join(t.TempDir(), "encrypted.bin")
+
+	encryptor, err := NewEncryptor(DefaultWorkers())
+	if err != nil {
+		t.Fatalf("failed to create encryptor: %v", err)
+	}
+
+	if err := encryptor.EncryptFile(inputFile, encryptedFile, "chunk-test"); err != nil {
+		t.Fatalf("encryption failed: %v", err)
+	}
+
+	// Read the encrypted file
+	encryptedData, err := os.ReadFile(encryptedFile)
+	if err != nil {
+		t.Fatalf("failed to read encrypted file: %v", err)
+	}
+
+	// Locate the chunk length field (after header, HMAC, and nonce)
+	// Header: Magic(4) + Version(1) + Salt(16) + ChunkSize(4) = 25 bytes
+	// HMAC: 32 bytes
+	// Nonce: 12 bytes
+	// First chunk length: at offset 25+32+12 = 69 bytes
+	chunkLenOffset := 69
+
+	if len(encryptedData) < chunkLenOffset+4 {
+		t.Skip("file too small for chunk length modification")
+	}
+
+	// Create a malicious file with chunk length > MaxChunkSize
+	maliciousData := make([]byte, len(encryptedData))
+	copy(maliciousData, encryptedData)
+
+	// Write a chunk length larger than MaxChunkSize (e.g., 20 MB)
+	maliciousChunkLen := uint32(MaxChunkSize + 1)
+	binary.BigEndian.PutUint32(maliciousData[chunkLenOffset:], maliciousChunkLen)
+
+	maliciousFile := filepath.Join(t.TempDir(), "malicious.bin")
+	if err := os.WriteFile(maliciousFile, maliciousData, 0644); err != nil {
+		t.Fatalf("failed to write malicious file: %v", err)
+	}
+
+	// Read header to get salt
+	file, err := os.Open(maliciousFile)
+	if err != nil {
+		t.Fatalf("failed to open malicious file: %v", err)
+	}
+	defer file.Close()
+
+	var header FileHeader
+	if err := binary.Read(file, binary.BigEndian, &header); err != nil {
+		t.Fatalf("failed to read header: %v", err)
+	}
+
+	decryptor, err := NewDecryptor("chunk-test", header.Salt[:])
+	if err != nil {
+		t.Fatalf("failed to create decryptor: %v", err)
+	}
+
+	decryptedFile := filepath.Join(t.TempDir(), "decrypted.txt")
+	err = decryptor.DecryptFile(maliciousFile, decryptedFile)
+
+	if err == nil {
+		t.Error("expected error for chunk too large, got nil")
+	}
+
+	if !errors.Is(err, ErrChunkTooLarge) {
+		t.Errorf("expected ErrChunkTooLarge, got: %v", err)
 	}
 }
 

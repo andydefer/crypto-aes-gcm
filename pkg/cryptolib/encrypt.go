@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"github.com/andydefer/crypto-aes-gcm/internal/argon2"
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
 	"github.com/andydefer/crypto-aes-gcm/internal/crypto"
 	"github.com/andydefer/crypto-aes-gcm/internal/header"
 	"github.com/andydefer/crypto-aes-gcm/internal/lang"
@@ -480,11 +481,11 @@ func clampChunkSize(chunkSize int) int {
 	if chunkSize <= 0 {
 		chunkSize = DefaultChunkSize
 	}
-	if chunkSize < header.MinChunkSize {
-		chunkSize = header.MinChunkSize
+	if chunkSize < constants.MinChunkSize {
+		chunkSize = constants.MinChunkSize
 	}
-	if chunkSize > header.MaxChunkSize {
-		chunkSize = header.MaxChunkSize
+	if chunkSize > MaxChunkSize {
+		chunkSize = MaxChunkSize
 	}
 	return chunkSize
 }

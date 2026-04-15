@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/andydefer/crypto-aes-gcm/internal/argon2"
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
 	"github.com/andydefer/crypto-aes-gcm/internal/header"
 )
 
@@ -29,7 +30,7 @@ import (
 // Results are useful for understanding performance characteristics
 // and detecting regressions.
 func BenchmarkEncrypt(b *testing.B) {
-	sizes := []int{1024, 1024 * 1024, 10 * 1024 * 1024}
+	sizes := []int{constants.KB, constants.MB, 10 * constants.MB}
 	passphrase := "benchmark-password"
 
 	for _, size := range sizes {
@@ -60,7 +61,7 @@ func BenchmarkEncrypt(b *testing.B) {
 // It tests sizes: 1KB, 1MB, and 10MB. The benchmark pre-encrypts the data
 // once, then repeatedly decrypts it to measure throughput.
 func BenchmarkDecrypt(b *testing.B) {
-	sizes := []int{1024, 1024 * 1024, 10 * 1024 * 1024}
+	sizes := []int{constants.KB, constants.MB, 10 * constants.MB}
 	passphrase := "benchmark-password"
 
 	for _, size := range sizes {
@@ -99,7 +100,7 @@ func BenchmarkDecrypt(b *testing.B) {
 // This benchmark helps determine optimal worker count for different
 // hardware configurations and data sizes.
 func BenchmarkEncryptParallel(b *testing.B) {
-	sizes := []int{1024 * 1024, 10 * 1024 * 1024}
+	sizes := []int{constants.MB, 10 * constants.MB}
 	workerCounts := []int{1, 2, 4, 8}
 	passphrase := "benchmark-password"
 
@@ -152,7 +153,7 @@ func BenchmarkArgon2KeyDerivation(b *testing.B) {
 // It helps understand the overhead of header authentication.
 func BenchmarkHMACComputation(b *testing.B) {
 	key := make([]byte, 32)
-	data := make([]byte, 1024)
+	data := make([]byte, constants.KB)
 	_, _ = rand.Read(key)
 	_, _ = rand.Read(data)
 
@@ -173,16 +174,16 @@ func BenchmarkHMACComputation(b *testing.B) {
 // Returns:
 //   - Human-readable size string
 func formatSize(bytes int) string {
-	if bytes < 1024 {
+	if bytes < constants.KB {
 		return itoa(bytes)
 	}
-	if bytes < 1024*1024 {
-		return itoa(bytes/1024) + "KB"
+	if bytes < constants.MB {
+		return itoa(bytes/constants.KB) + "KB"
 	}
-	if bytes < 1024*1024*1024 {
-		return itoa(bytes/(1024*1024)) + "MB"
+	if bytes < constants.GB {
+		return itoa(bytes/constants.MB) + "MB"
 	}
-	return itoa(bytes/(1024*1024*1024)) + "GB"
+	return itoa(bytes/constants.GB) + "GB"
 }
 
 // itoa converts an integer to a string without using strconv.Itoa.

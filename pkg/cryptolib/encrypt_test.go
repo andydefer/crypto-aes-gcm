@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/andydefer/crypto-aes-gcm/internal/constants"
 )
 
 // TestEncryptor_EncryptDecrypt verifies the complete encryption and decryption cycle.
@@ -28,7 +30,7 @@ func TestEncryptor_EncryptDecrypt(t *testing.T) {
 		"More data to make sure we exceed the chunk size of 1MB. " +
 		"Adding even more text to create multiple chunks for testing.")
 
-	largeData := make([]byte, 5*1024*1024)
+	largeData := make([]byte, 5*constants.MB)
 	_, _ = rand.Read(largeData)
 
 	testCases := []struct {
@@ -226,7 +228,7 @@ func TestEncryptor_MemoryUsage(t *testing.T) {
 		t.Skip("skipping memory test in short mode")
 	}
 
-	testData := make([]byte, 10*1024*1024)
+	testData := make([]byte, 10*constants.MB)
 	_, _ = rand.Read(testData)
 
 	inputFile := createTempFile(t, testData)
@@ -248,7 +250,6 @@ func TestEncryptor_MemoryUsage(t *testing.T) {
 		t.Fatalf("failed to stat encrypted file: %v", err)
 	}
 
-	// Encrypted file should be larger than original (header + nonce + auth tags)
 	if fileInfo.Size() < int64(len(testData)) {
 		t.Errorf("encrypted file size %d is smaller than original %d",
 			fileInfo.Size(), len(testData))
@@ -261,7 +262,7 @@ func TestEncryptorWithCustomConfig(t *testing.T) {
 
 	config := EncryptorConfig{
 		Workers:          2,
-		ChunkSize:        32 * 1024, // 32KB chunks
+		ChunkSize:        32 * constants.KB,
 		MaxPendingChunks: 20,
 	}
 
@@ -293,7 +294,6 @@ func TestEncryptorWithCustomConfig(t *testing.T) {
 func TestNewEncryptorBackwardCompatibility(t *testing.T) {
 	testData := []byte("backward compatibility test")
 
-	// Old API
 	encryptor, err := NewEncryptor(DefaultWorkers())
 	if err != nil {
 		t.Fatalf("NewEncryptor failed: %v", err)
@@ -315,6 +315,92 @@ func TestNewEncryptorBackwardCompatibility(t *testing.T) {
 
 	if !bytes.Equal(testData, decryptedBuf.Bytes()) {
 		t.Errorf("data mismatch")
+	}
+}
+
+// TestEncryptor_ChunkSizeClamping verifies that chunk size validation works correctly.
+//
+// This test ensures that the encryptor clamps invalid chunk sizes to safe ranges
+// and that encryption still works with clamped values.
+func TestEncryptor_ChunkSizeClamping(t *testing.T) {
+	testData := []byte("test data for chunk size clamping")
+
+	testCases := []struct {
+		name          string
+		requestedSize int
+		expectedMin   int
+		expectedMax   int
+	}{
+		{
+			name:          "negative chunk size",
+			requestedSize: -100,
+			expectedMin:   constants.KB,
+			expectedMax:   DefaultChunkSize,
+		},
+		{
+			name:          "zero chunk size",
+			requestedSize: 0,
+			expectedMin:   constants.KB,
+			expectedMax:   DefaultChunkSize,
+		},
+		{
+			name:          "very small chunk size",
+			requestedSize: 512,
+			expectedMin:   constants.KB,
+			expectedMax:   constants.KB,
+		},
+		{
+			name:          "very large chunk size",
+			requestedSize: 100 * constants.MB,
+			expectedMin:   DefaultChunkSize,
+			expectedMax:   16 * constants.MB,
+		},
+		{
+			name:          "normal chunk size",
+			requestedSize: 64 * constants.KB,
+			expectedMin:   64 * constants.KB,
+			expectedMax:   64 * constants.KB,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			config := EncryptorConfig{
+				Workers:          DefaultWorkers(),
+				ChunkSize:        tc.requestedSize,
+				MaxPendingChunks: DefaultMaxPendingChunks,
+			}
+
+			encryptor, err := NewEncryptorWithConfig(config)
+			if err != nil {
+				t.Fatalf("failed to create encryptor: %v", err)
+			}
+
+			if encryptor.chunkSize < tc.expectedMin {
+				t.Errorf("chunk size %d is below minimum expected %d", encryptor.chunkSize, tc.expectedMin)
+			}
+			if encryptor.chunkSize > tc.expectedMax {
+				t.Errorf("chunk size %d is above maximum expected %d", encryptor.chunkSize, tc.expectedMax)
+			}
+
+			var encryptedBuf bytes.Buffer
+			reader := bytes.NewReader(testData)
+
+			if err := encryptor.Encrypt(reader, &encryptedBuf, "clamp-test"); err != nil {
+				t.Fatalf("encryption failed with clamped chunk size %d: %v", encryptor.chunkSize, err)
+			}
+
+			var decryptedBuf bytes.Buffer
+			encryptedReader := bytes.NewReader(encryptedBuf.Bytes())
+
+			if err := DecryptStream(encryptedReader, &decryptedBuf, "clamp-test"); err != nil {
+				t.Fatalf("decryption failed: %v", err)
+			}
+
+			if !bytes.Equal(testData, decryptedBuf.Bytes()) {
+				t.Errorf("data mismatch after chunk size clamping")
+			}
+		})
 	}
 }
 
