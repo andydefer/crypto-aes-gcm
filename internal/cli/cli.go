@@ -44,7 +44,7 @@ func applyLanguage(langFlag string) {
 	case "fr", "french":
 		lang.SetLanguage(lang.French)
 	default:
-		ui.ErrorColor.Printf("⚠️ Invalid language '%s', using English (en). Supported: en, fr\n", langFlag)
+		ui.ErrorColor.Printf(lang.T(lang.CliErrorInvalidLanguage), langFlag)
 		lang.SetLanguage(lang.English)
 	}
 }
@@ -81,14 +81,10 @@ var rootCmd = &cobra.Command{
   decrypt   ` + lang.T(lang.CmdDecryptShort) + `
   interact  ` + lang.T(lang.InteractiveTitle) + `
   version   ` + lang.T(lang.VersionShortDesc) + `
-  help      Display help about any command
+  help      ` + lang.T(lang.RootHelpDesc) + `
 
 ` + ui.InfoColor.Sprint(lang.T(lang.RootPasswordManagement)) + `
-  For both encrypt and decrypt commands, you can either:
-    - Provide --pass flag (visible in process list)
-    - Omit the flag and enter password interactively (recommended)
-
-  For encryption, interactive mode includes password confirmation and strength validation.
+` + lang.T(lang.RootPasswordManagementDesc) + `
 
 ` + ui.InfoColor.Sprint(lang.T(lang.RootExamplesTitle)) + `
   ` + lang.T(lang.RootExampleEncrypt) + `
@@ -116,7 +112,7 @@ var rootCmd = &cobra.Command{
 // This runs automatically when the package is imported, setting up the
 // complete command tree before execution.
 func init() {
-	rootCmd.PersistentFlags().StringVar(&GlobalConfig.Lang, "lang", "", "Language for UI (en, fr) - default: en")
+	rootCmd.PersistentFlags().StringVar(&GlobalConfig.Lang, "lang", "", lang.T(lang.FlagLangDesc))
 	rootCmd.AddCommand(NewEncryptCmd())
 	rootCmd.AddCommand(NewDecryptCmd())
 	rootCmd.AddCommand(NewInteractCmd())

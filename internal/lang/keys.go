@@ -1,7 +1,7 @@
 // Package lang provides internationalization support with type-safe message keys.
 //
-// This package defines all message keys used throughout the application and
-// the MessageBundle interface that each language implementation must satisfy.
+// It defines all message keys used throughout the application and the MessageBundle
+// interface that each language implementation must satisfy.
 package lang
 
 // Key represents a localized message key.
@@ -23,16 +23,18 @@ const (
 	ErrKeyLenShort   Key = "argon2.err.key_len_short"
 	ErrKeyLenLong    Key = "argon2.err.key_len_long"
 
-	// CLI user interactions (shared between encrypt/decrypt)
-	CliFileExists         Key = "cli.file_exists"
-	CliOperationCancelled Key = "cli.operation_cancelled"
-	CliError              Key = "cli.error"
+	// CLI user interactions
+	CliFileExists           Key = "cli.file_exists"
+	CliOperationCancelled   Key = "cli.operation_cancelled"
+	CliError                Key = "cli.error"
+	CliErrorInvalidLanguage Key = "cli.error.invalid_language"
 
 	// Command-line flags descriptions
 	FlagPassDesc    Key = "cli.flag.pass_desc"
 	FlagWorkersDesc Key = "cli.flag.workers_desc"
 	FlagForceDesc   Key = "cli.flag.force_desc"
 	FlagQuietDesc   Key = "cli.flag.quiet_desc"
+	FlagLangDesc    Key = "cli.flag.lang_desc"
 
 	// Command descriptions
 	CmdEncryptShort Key = "cli.cmd.encrypt_short"
@@ -73,17 +75,19 @@ const (
 	PasswordDigit         Key = "cli.password.digit"
 
 	// Root command help sections
-	RootShortDesc          Key = "cli.root.short_desc"
-	RootLongDesc           Key = "cli.root.long_desc"
-	RootUsage              Key = "cli.root.usage"
-	RootCommandsTitle      Key = "cli.root.commands_title"
-	RootPasswordManagement Key = "cli.root.password_management"
-	RootExamplesTitle      Key = "cli.root.examples_title"
-	RootExampleEncrypt     Key = "cli.root.example_encrypt"
-	RootExampleDecrypt     Key = "cli.root.example_decrypt"
-	RootExamplePassFlag    Key = "cli.root.example_pass_flag"
-	RootExampleWorkers     Key = "cli.root.example_workers"
-	RootExampleForce       Key = "cli.root.example_force"
+	RootShortDesc              Key = "cli.root.short_desc"
+	RootLongDesc               Key = "cli.root.long_desc"
+	RootUsage                  Key = "cli.root.usage"
+	RootCommandsTitle          Key = "cli.root.commands_title"
+	RootHelpDesc               Key = "cli.root.help_desc"
+	RootPasswordManagement     Key = "cli.root.password_management"
+	RootPasswordManagementDesc Key = "cli.root.password_management_desc"
+	RootExamplesTitle          Key = "cli.root.examples_title"
+	RootExampleEncrypt         Key = "cli.root.example_encrypt"
+	RootExampleDecrypt         Key = "cli.root.example_decrypt"
+	RootExamplePassFlag        Key = "cli.root.example_pass_flag"
+	RootExampleWorkers         Key = "cli.root.example_workers"
+	RootExampleForce           Key = "cli.root.example_force"
 
 	// Version command output
 	VersionShortDesc Key = "cli.version.short_desc"
@@ -214,12 +218,14 @@ type MessageBundle interface {
 	GetCliFileExists() string
 	GetCliOperationCancelled() string
 	GetCliError() string
+	GetCliErrorInvalidLanguage() string
 
 	// Command-line flags descriptions
 	GetFlagPassDesc() string
 	GetFlagWorkersDesc() string
 	GetFlagForceDesc() string
 	GetFlagQuietDesc() string
+	GetFlagLangDesc() string
 
 	// Command descriptions
 	GetCmdEncryptShort() string
@@ -264,7 +270,9 @@ type MessageBundle interface {
 	GetRootLongDesc() string
 	GetRootUsage() string
 	GetRootCommandsTitle() string
+	GetRootHelpDesc() string
 	GetRootPasswordManagement() string
+	GetRootPasswordManagementDesc() string
 	GetRootExamplesTitle() string
 	GetRootExampleEncrypt() string
 	GetRootExampleDecrypt() string

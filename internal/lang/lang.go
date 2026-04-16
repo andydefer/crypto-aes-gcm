@@ -26,7 +26,6 @@ var (
 	mu            sync.RWMutex
 )
 
-// init initializes the language system with English as the default language.
 func init() {
 	SetLanguage(English)
 }

@@ -2,12 +2,9 @@
 //
 // This package maintains a complete map of English fallback messages that are
 // used when a requested key is not found in the active language bundle.
-// This guarantees that users never see raw keys, only readable messages.
 package lang
 
 // defaultEnglishMessages contains all messages in English as a fallback.
-// This map ensures that even if a key is missing from the active language bundle,
-// a meaningful English message is always returned instead of the key itself.
 var defaultEnglishMessages = map[Key]string{
 	// Argon2 key derivation errors
 	ErrMemoryTooLow:  "memory too low: %d KiB (minimum 8192 KiB)",
@@ -21,21 +18,45 @@ var defaultEnglishMessages = map[Key]string{
 	ErrKeyLenLong:    "key length too long: %d bytes (maximum 64)",
 
 	// CLI user interactions
-	CliFileExists:         "File '%s' already exists. Overwrite?",
-	CliOperationCancelled: "❌ Operation cancelled",
-	CliError:              "❌ Error: %v",
+	CliFileExists:           "File '%s' already exists. Overwrite?",
+	CliOperationCancelled:   "❌ Operation cancelled",
+	CliError:                "❌ Error: %v",
+	CliErrorInvalidLanguage: "⚠️ Invalid language '%s', using English (en). Supported: en, fr\n",
 
 	// Command-line flags descriptions
 	FlagPassDesc:    "Passphrase used for encryption (optional - will prompt if omitted)",
 	FlagWorkersDesc: "Number of parallel workers",
 	FlagForceDesc:   "Overwrite existing output file without confirmation",
 	FlagQuietDesc:   "Suppress progress bar output",
+	FlagLangDesc:    "Language for UI (en, fr) - default: en",
 
 	// Command descriptions
 	CmdEncryptShort: "🔒 Encrypt a file",
-	CmdEncryptLong:  "Encrypt a file using AES-256-GCM with Argon2id key derivation.",
+	CmdEncryptLong: `Encrypt a file using AES-256-GCM with Argon2id key derivation.
+
+The encryption process:
+  1. Generates a random salt and nonce
+  2. Derives a 256-bit key using Argon2id
+  3. Splits the input into chunks (default 1MB)
+  4. Encrypts chunks in parallel using the specified number of workers
+  5. Writes header, HMAC, nonce, and encrypted chunks to the output file
+
+Password can be provided via:
+  - --pass flag (visible in process list, not recommended for shared environments)
+  - Interactive prompt (recommended for manual use)`,
 	CmdDecryptShort: "🔓 Decrypt a file",
-	CmdDecryptLong:  "Decrypt a file that was encrypted with the encrypt command.",
+	CmdDecryptLong: `Decrypt a file that was encrypted with the encrypt command.
+
+The decryption process:
+  1. Validates the input file exists
+  2. Reads and verifies the file header
+  3. Derives the encryption key using Argon2id with the salt from header
+  4. Streams and decrypts the data to the output file
+  5. Verifies integrity of each chunk via GCM authentication
+
+Password can be provided via:
+  - --pass flag (visible in process list, not recommended for shared environments)
+  - Interactive prompt (recommended for manual use)`,
 
 	// Interactive mode prompts and messages
 	InteractiveTitle:              "Interactive Mode",
@@ -52,9 +73,10 @@ var defaultEnglishMessages = map[Key]string{
 	InteractiveFileToEncrypt:      "📁 File to encrypt",
 	InteractiveEncryptedFile:      "📁 Encrypted file",
 	InteractivePasswordsNotMatch:  "❌ Passwords do not match",
-	InteractiveCheckExists:        "check file existence",
-	InteractiveOverwriteCancelled: "❌ Operation cancelled",
 	InteractiveCancelOperation:    "user cancelled operation",
+	InteractiveCheckExists:        "check file existence",
+	InteractiveOverwriteConfirm:   "⚠️ File already exists. Overwrite?",
+	InteractiveOverwriteCancelled: "❌ Operation cancelled",
 
 	// Password validation and prompts
 	PasswordPrompt:        "🔑 Password: ",
@@ -73,13 +95,19 @@ var defaultEnglishMessages = map[Key]string{
 	RootLongDesc:           "",
 	RootUsage:              "Usage:",
 	RootCommandsTitle:      "Commands:",
+	RootHelpDesc:           "Display help about any command",
 	RootPasswordManagement: "Password Management:",
-	RootExamplesTitle:      "Examples:",
-	RootExampleEncrypt:     "# Encrypt with interactive password prompt (recommended)",
-	RootExampleDecrypt:     "# Decrypt with interactive password prompt (recommended)",
-	RootExamplePassFlag:    "# Encrypt with --pass flag (for scripts)",
-	RootExampleWorkers:     "# With parallel processing (8 workers)",
-	RootExampleForce:       "# Force overwrite without confirmation",
+	RootPasswordManagementDesc: `For both encrypt and decrypt commands, you can either:
+  - Provide --pass flag (visible in process list)
+  - Omit the flag and enter password interactively (recommended)
+
+For encryption, interactive mode includes password confirmation and strength validation.`,
+	RootExamplesTitle:   "Examples:",
+	RootExampleEncrypt:  "# Encrypt with interactive password prompt (recommended)",
+	RootExampleDecrypt:  "# Decrypt with interactive password prompt (recommended)",
+	RootExamplePassFlag: "# Encrypt with --pass flag (for scripts)",
+	RootExampleWorkers:  "# With parallel processing (8 workers)",
+	RootExampleForce:    "# Force overwrite without confirmation",
 
 	// Version command output
 	VersionShortDesc: "Show version information",
@@ -100,18 +128,34 @@ var defaultEnglishMessages = map[Key]string{
 	WarnWorkersReduced:   "⚠️ Workers reduced to %d\n",
 
 	// UI banners and headers
-	UIInteractiveHeader: "Interactive Mode",
-	UIEncryptHeader:     "🔐 FILE ENCRYPTION",
-	UIDecryptHeader:     "🔓 FILE DECRYPTION",
-	UIHeaderSeparator:   "────────────────────────────────────────",
-	UIGoodbyeMessage:    "Thank you for using AESCRYPTOOL!",
+	UIInteractiveHeader: `╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║                 🎮 AESCRYPTOOL - INTERACTIVE MODE                  ║
+║                                                                    ║
+║         Follow the prompts to encrypt or decrypt your files        ║
+║         All inputs will be validated before execution              ║
+║                                                                    ║
+║           Ctrl+C = Return to menu | Ctrl+D = Quit                  ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝`,
+	UIEncryptHeader:   "🔐 FILE ENCRYPTION",
+	UIDecryptHeader:   "🔓 FILE DECRYPTION",
+	UIHeaderSeparator: "────────────────────────────────────────",
+	UIGoodbyeMessage: `
+╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║              👋 Thank you for using AESCRYPTOOL!                   ║
+║                                                                    ║
+║              See you next time for your encryption needs!          ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝`,
 
 	// UI prompt messages
 	UIPromptOperationLabel:    "What do you want to do",
 	UIPromptEncryptOption:     "🔒  Encrypt a file",
 	UIPromptDecryptOption:     "🔓  Decrypt a file",
 	UIPromptExitOption:        "🚪  Exit",
-	UIPromptGoodbye:           "Thank you for using CRYPTOOL!",
+	UIPromptGoodbye:           "👋 Thank you for using CRYPTOOL!",
 	UIPromptPathEmpty:         "❌ Path cannot be empty",
 	UIPromptPathNotExist:      "❌ File '%s' does not exist",
 	UIPromptPathSuccess:       "   ✓ %s",
